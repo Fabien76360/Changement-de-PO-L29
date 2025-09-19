@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMED Helper</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="branding">
+      <h1>SMED Helper</h1>
+      <p class="tagline">Avancement serein du changement de production</p>
+    </div>
+    <div class="badge-chrono" aria-live="polite">
+      <div class="badge-chrono__time" id="timerDisplay">00:00:00</div>
+      <div class="badge-chrono__actions">
+        <button type="button" class="badge-chrono__btn" id="timerStartPause" aria-label="Démarrer le chrono">▶</button>
+        <button type="button" class="badge-chrono__btn" id="timerReset" aria-label="Réinitialiser le chrono">⟲</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab tab--active" id="tab-operations" role="tab" aria-selected="true" aria-controls="view-operations" data-tab="operations">Gamme</button>
+    <button class="tab" id="tab-settings" role="tab" aria-selected="false" aria-controls="view-settings" data-tab="settings">Paramètres</button>
+    <button class="tab" id="tab-analysis" role="tab" aria-selected="false" aria-controls="view-analysis" data-tab="analysis">Analyse</button>
+  </nav>
+
+  <main class="views">
+    <section id="view-operations" class="view view--active" role="tabpanel" aria-labelledby="tab-operations">
+      <div class="objectives" id="operationsSummary"></div>
+      <section class="prep" id="prepSection" aria-label="Préparation du changement"></section>
+      <div class="lanes" id="lanes"></div>
+    </section>
+
+    <section id="view-settings" class="view" role="tabpanel" aria-labelledby="tab-settings">
+      <div class="settings" id="settingsPanel"></div>
+    </section>
+
+    <section id="view-analysis" class="view" role="tabpanel" aria-labelledby="tab-analysis">
+      <div class="analysis-controls">
+        <div class="filters">
+          <label>
+            Opérateur
+            <select id="analysisFilterOperator"></select>
+          </label>
+          <label>
+            Phase
+            <select id="analysisFilterPhase"></select>
+          </label>
+          <button type="button" id="analysisRefresh" class="btn">Actualiser</button>
+        </div>
+        <div class="exports">
+          <button type="button" id="exportCsv" class="btn">Exporter CSV</button>
+          <button type="button" id="exportJson" class="btn">Exporter JSON</button>
+        </div>
+      </div>
+      <div class="analysis-top" id="analysisTop"></div>
+      <div class="analysis-table-container">
+        <table id="analysisTable" class="analysis-table">
+          <thead>
+            <tr>
+              <th data-sort="label">Opération</th>
+              <th data-sort="phase">Phase</th>
+              <th data-sort="operator">Opérateur</th>
+              <th data-sort="target">Cible (min)</th>
+              <th data-sort="actual">Réel (min)</th>
+              <th data-sort="delta">Écart (min)</th>
+              <th data-sort="achievement">% Atteinte</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Mode Aide &amp; Avancement — SMED collaboratif sans stress.</p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
