@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Timer SMED — Affichage Ligne</title>
+<style>
+  :root{
+    --bg:#0b1220; --fg:#e8eefc; --muted:#8ea0c0; --accent:#4ade80; --warn:#fbbf24; --danger:#f87171; --panel:#111a2e; --btn:#1b2540; --btnHover:#223055;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{display:grid;grid-template-rows:auto 1fr auto;min-height:100%;gap:12px;padding:16px}
+  header{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{background:#0f1a34;border:1px solid #20335f;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+  .tab.active{outline:2px solid var(--accent)}
+  .id-form{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+  .id-form label{font-size:12px;color:var(--muted)}
+  .id-form input, .id-form select{background:var(--panel);color:var(--fg);border:1px solid #223055;border-radius:10px;padding:10px 12px;font-size:14px;min-width:140px}
+  .pill{background:#0f1a34;border:1px solid #20335f;border-radius:999px;padding:8px 12px;font-size:13px;color:var(--muted)}
+  .layout{display:grid;grid-template-columns:1fr 360px;gap:16px}
+  .board{background:var(--panel);border:1px solid #1d2a49;border-radius:16px;padding:16px;display:grid;gap:10px}
+  .time{font-variant-numeric:tabular-nums;line-height:1;letter-spacing:1px;font-weight:700;font-size:18vw;text-align:center}
+  @media (min-width: 1100px){.time{font-size:160px}}
+  .target-row{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+  .target{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+  .target input{width:90px;text-align:center}
+  input[type=number]{-moz-appearance:textfield}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{appearance:none;margin:0}
+  .bar{height:12px;background:#0e1931;border-radius:999px;border:1px solid #1f2d51;overflow:hidden}
+  .bar>div{height:100%;width:0;background:var(--accent);transition:width .2s linear}
+  .status{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+  .btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  button{background:var(--btn);color:var(--fg);border:1px solid #2a3a66;border-radius:14px;padding:14px 12px;font-size:16px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--btnHover)}
+  button.primary{background:linear-gradient(180deg,#1f834a,#146c3a);border-color:#1a7a44}
+  button.warn{background:linear-gradient(180deg,#997016,#7d5b11);border-color:#a27618}
+  button.danger{background:linear-gradient(180deg,#8b2b2b,#6e2222);border-color:#9a3535}
+  button.ghost{background:transparent;border-color:#2a3a66}
+  .side{display:grid;gap:12px}
+  .card{background:var(--panel);border:1px solid #1d2a49;border-radius:16px;padding:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid #2a3a66;background:#0f1a34;color:#cfe0ff;font-size:13px;cursor:pointer}
+  .chip.active{outline:2px solid var(--accent);box-shadow:0 0 0 2px #0c1a2f}
+  .log{max-height:38vh;overflow:auto;border-radius:10px;border:1px solid #223055}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px 8px;border-bottom:1px solid #1f2d51;font-size:14px}
+  th{position:sticky;top:0;background:#0f1a34;color:#9fb3d9;text-align:left}
+  tfoot td{font-weight:700}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;background:#0f1a34;border:1px solid #223055;border-radius:6px;padding:2px 6px;font-size:12px}
+  footer{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+  .hint{display:flex;flex-wrap:wrap;gap:8px}
+  .dot{width:10px;height:10px;border-radius:999px;display:inline-block;margin-right:6px}
+  .ok{background:var(--accent)}.mid{background:var(--warn)}.bad{background:var(--danger)}
+  /* ParamÃ¨tres */
+  .grid{display:grid;gap:12px}
+  .cols-2{grid-template-columns:1fr 1fr}
+  textarea, .list input{background:var(--panel);color:var(--fg);border:1px solid #223055;border-radius:10px;padding:10px 12px;font-size:14px;width:100%}
+  .group{display:grid;gap:6px}
+  .subtle{color:var(--muted);font-size:13px}
+
+  /* --- AJOUTS pour les pastilles d'opérations --- */
+  .op-list{display:flex;flex-wrap:wrap;gap:10px}
+  .op-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 12px;border-radius:999px;
+    border:1px solid #2a3a66;background:#0f1a34;color:#cfe0ff;
+    cursor:pointer;user-select:none;position:relative;
+    transition:transform .05s ease, outline-color .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+    font-size:13px
+  }
+  .op-pill:active{transform:translateY(1px)}
+  .op-num{font-variant-numeric:tabular-nums;background:#0e1931;border:1px solid #223055;border-radius:999px;padding:2px 6px}
+  .op-pill.current{outline:2px solid var(--accent);box-shadow:0 0 0 2px #0c1a2f}
+  .op-pill.done{
+    background:linear-gradient(180deg,#1f834a,#146c3a);
+    border-color:#1a7a44;color:#eafff0
+  }
+  .op-pill.done .op-num{background:transparent;border-color:transparent}
+  .op-check{
+    display:none; font-weight:900
+  }
+  .op-pill.done .op-check{display:inline}
+
+  /* Correction de l'affichage des avatars dans les chips opérateurs */
+  #opsChips .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  #opsChips .avatar {
+    font-size: 14px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* --- STYLES POUR LES OPÉRATIONS ASSIGNÉES --- */
+  .operation-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #0e1931;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid #2a3a66;
+  }
+  
+  .operation-item input {
+    background: var(--panel);
+    color: var(--fg);
+    border: 1px solid #223055;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    width: 100%;
+    min-width: 200px;
+  }
+  
+  .operation-item select {
+    background: var(--panel);
+    color: var(--fg);
+    border: 1px solid #223055;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    min-width: 120px;
+  }
+  
+  .add-operation {
+    background: var(--btn);
+    color: var(--fg);
+    border: 1px solid #2a3a66;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 8px;
+  }
+  
+  .add-operation:hover {
+    background: var(--btnHover);
+  }
+  
+  .remove-operation {
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* --- STYLES POUR L'ONGLET ANALYSE --- */
+  .analysis-layout{display:grid;gap:16px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px}
+  .kpi-card{background:var(--panel);border:1px solid #1d2a49;border-radius:16px;padding:16px;text-align:center}
+  .kpi-value{font-size:2em;font-weight:700;margin-bottom:8px;font-variant-numeric:tabular-nums}
+  .kpi-label{color:var(--muted);font-size:14px}
+  .kpi-gain{color:var(--accent)}.kpi-warning{color:var(--warn)}.kpi-danger{color:var(--danger)}
+  
+  .analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width: 1200px){.analysis-grid{grid-template-columns:1fr}}
+  
+  .phase-bar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .phase-name{min-width:120px;font-size:14px}
+  .phase-progress{flex:1;height:24px;background:#0e1931;border-radius:12px;border:1px solid #1f2d51;overflow:hidden;position:relative}
+  .phase-fill{height:100%;background:linear-gradient(90deg,var(--accent),#22c55e);transition:width .3s ease}
+  .phase-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:var(--fg);mix-blend-mode:difference}
+  .phase-duration{min-width:80px;text-align:right;font-size:14px;font-variant-numeric:tabular-nums}
+  
+  .completion-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#0f1a34;border-radius:8px;margin-bottom:8px}
+  .completion-rate{font-weight:700;font-variant-numeric:tabular-nums}
+  .completion-100{color:var(--accent)}.completion-partial{color:var(--warn)}.completion-0{color:var(--muted)}
+  
+  .top-contributors{list-style:none;padding:0;margin:0}
+  .contributor{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#0f1a34;border-radius:8px;margin-bottom:8px;border-left:4px solid var(--danger)}
+  .contributor-rank{font-weight:900;color:var(--danger);margin-right:12px}
+  
+  .markers-list{display:grid;gap:8px}
+  .marker-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0f1a34;border-radius:8px}
+  .marker-count{font-weight:700;color:var(--warn);background:#1f2937;padding:4px 8px;border-radius:999px;font-size:12px}
+  
+  .refresh-btn{margin-bottom:16px}
+  .no-data{text-align:center;color:var(--muted);padding:40px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <form class="id-form" id="idForm" onsubmit="return false;">
+      <div>
+        <label for="site">Site / Ligne</label><br>
+        <input id="site" placeholder="Ex: NDB — L29" />
+      </div>
+      <div>
+        <label for="po">PO</label><br>
+        <input id="po" placeholder="Ex: PO123456" />
+      </div>
+      <div>
+        <label for="mode">Mode</label><br>
+        <select id="mode">
+          <option value="countup">Chrono &nearrow; (compte)</option>
+          <option value="countdown">Décompte &searrow; (cible)</option>
+        </select>
+      </div>
+    </form>
+    <div class="tabs">
+      <div class="tab active" data-tab="timer">⏱️ Timer</div>
+      <div class="tab" data-tab="params">⚙️ Paramètres</div>
+      <div class="tab" data-tab="analysis">📊 Analyse</div>
+      <div class="pill" id="now"></div>
+    </div>
+  </header>
+
+  <!-- TIMER VIEW -->
+  <div class="layout" id="view-timer">
+    <section class="board">
+      <div id="display" class="time">00:00:00</div>
+      <div class="target-row">
+        <div class="target">Cible (min): <input id="targetMin" type="number" min="0" step="1" value="40"></div>
+        <div class="target">Alerte (min): <input id="warnMin" type="number" min="0" step="1" value="35"></div>
+      </div>
+
+      <div class="status" style="margin-top:6px;margin-bottom:6px">
+        <div>Statut : <strong id="state">Prêt</strong></div>
+        <div><span class="dot ok"></span><span id="okLabel">≤ Cible</span> • <span class="dot mid"></span> Entre Alerte et Cible • <span class="dot bad"></span> > Cible</div>
+      </div>
+
+      <div class="bar"><div id="progress"></div></div>
+
+      <!-- Opérateurs actifs -->
+      <div class="card">
+        <div style="margin-bottom:6px;color:var(--muted);font-weight:700;">Opérateur actif</div>
+        <div class="chips" id="opsChips"></div>
+        <div class="subtle">L'opérateur sélectionné sera enregistré sur chaque événement/opération.</div>
+      </div>
+
+      <!-- Phases principales + opérations -->
+      <div class="card">
+        <div style="margin-bottom:6px;color:var(--muted);font-weight:700;">Phase</div>
+        <div class="chips" id="phaseChips"></div>
+        <div class="subtle" style="margin-top:6px">Opérations assignées à l'opérateur actif dans cette phase :</div>
+        <!-- REMPLACÉ: chips -> op-list (pastilles numérotées) -->
+        <div class="op-list" id="opsPhaseChips" style="margin-top:6px"></div>
+      </div>
+
+      <div class="btns">
+        <button id="startPause" class="primary">▶️ Démarrer</button>
+        <button id="lap" class="ghost">⏱️ Événement</button>
+        <button id="markOp" class="ghost">🏷️ Opération</button>
+        <button id="end" class="warn">✅ Fin changement</button>
+      </div>
+      <div class="btns">
+        <button id="reset" class="danger">♻️ Reset</button>
+        <button id="exportCsv" class="ghost">📤 Export CSV</button>
+        <button id="exportHtml" class="ghost">💾 Export HTML</button>
+        <button id="fullscreen" class="ghost">⛶ Plein écran</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="color:var(--muted);font-weight:700;">Journal</div>
+        </div>
+        <div class="log">
+          <table id="logTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Horodatage</th>
+                <th>Opérateur</th>
+                <th>Phase</th>
+                <th>Événement</th>
+                <th>Durée</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr><td colspan="5">Total</td><td id="totalCell">00:00:00</td><td></td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- PARAMS VIEW -->
+  <div id="view-params" style="display:none">
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;color:var(--muted);margin-bottom:6px">Opérateurs (jusqu'à 3)</div>
+      <div class="grid cols-2">
+        <div class="group"><label>Opérateur 1</label><input id="op1" placeholder="Nom opérateur 1"></div>
+        <div class="group"><label>Opérateur 2</label><input id="op2" placeholder="Nom opérateur 2"></div>
+        <div class="group"><label>Opérateur 3</label><input id="op3" placeholder="Nom opérateur 3"></div>
+        <div class="group"><label>Opérateur par défaut</label>
+          <select id="opDefault"><option value="">(aucun)</option><option value="op1">Opérateur 1</option><option value="op2">Opérateur 2</option><option value="op3">Opérateur 3</option></select>
+        </div>
+      </div>
+      <div class="subtle">Ces noms alimentent les puces "Opérateur actif" sur l'écran Timer.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;color:var(--muted);margin-bottom:6px">Marqueurs rapides</div>
+      <div class="group">
+        <label>Liste (séparée par des virgules)</label>
+        <input id="quickMarkers" placeholder="Ex: Arrêt, Reprise, Attente CQ, Manque composant">
+      </div>
+      <div class="subtle">Ces marqueurs apparaissent dans le menu rapide quand tu appuies sur <span class="kbd">L</span> ou le bouton "Marque".</div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;color:var(--muted);margin-bottom:6px">Phases & opérations assignées</div>
+      <div class="subtle" style="margin-bottom:8px">Structure en 3 grandes phases : <strong>Début de PO</strong>, <strong>Fin de PO</strong>, <strong>Vide de ligne</strong>. Assignez chaque opération à un opérateur.</div>
+      
+      <!-- Début de PO -->
+      <div class="group" style="margin-bottom:16px">
+        <label style="font-weight:600;color:var(--fg)">Début de PO — Opérations</label>
+        <div id="opsDebutContainer"></div>
+        <div class="add-operation" onclick="addOperation('Début de PO')">+ Ajouter une opération</div>
+      </div>
+      
+      <!-- Fin de PO -->
+      <div class="group" style="margin-bottom:16px">
+        <label style="font-weight:600;color:var(--fg)">Fin de PO — Opérations</label>
+        <div id="opsFinContainer"></div>
+        <div class="add-operation" onclick="addOperation('Fin de PO')">+ Ajouter une opération</div>
+      </div>
+      
+      <!-- Vide de ligne -->
+      <div class="group" style="margin-bottom:16px">
+        <label style="font-weight:600;color:var(--fg)">Vide de ligne — Opérations</label>
+        <div id="opsVideContainer"></div>
+        <div class="add-operation" onclick="addOperation('Vide de ligne')">+ Ajouter une opération</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="saveParams" class="primary">💾 Enregistrer paramètres</button>
+      <button id="resetParams" class="ghost">↩️ Revenir aux valeurs par défaut</button>
+    </div>
+  </div>
+
+  <!-- ANALYSIS VIEW -->
+  <div id="view-analysis" style="display:none">
+    <div class="refresh-btn">
+      <button id="refreshAnalysis" class="primary">🔄 Rafraîchir l'analyse</button>
+    </div>
+
+    <div class="analysis-layout">
+      <!-- KPIs principaux -->
+      <div class="kpis">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-duration">00:00:00</div>
+          <div class="kpi-label">Durée totale</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-target">--</div>
+          <div class="kpi-label">Cible (min)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpi-gap">--</div>
+          <div class="kpi-label">Écart vs cible</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value kpi-gain" id="kpi-potential">--</div>
+          <div class="kpi-label">Gain potentiel</div>
+        </div>
+      </div>
+
+      <div class="analysis-grid">
+        <!-- Répartition par phases -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">⏱️ Répartition par phases</div>
+          <div id="phasesBreakdown"></div>
+        </div>
+
+        <!-- Répartition par opérateurs -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">👥 Répartition par opérateurs</div>
+          <div id="operatorsBreakdown"></div>
+        </div>
+
+        <!-- Taux de complétion -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">✅ Taux de complétion d'opérations</div>
+          <div id="completionRates"></div>
+        </div>
+
+        <!-- Top 3 opérations contributrices -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">🎯 Top 3 opérations les plus longues</div>
+          <div id="topOperations"></div>
+        </div>
+
+        <!-- Top 3 phases contributrices -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">📊 Top 3 phases contributrices à l'écart</div>
+          <div id="topContributors"></div>
+        </div>
+
+        <!-- Marqueurs perturbateurs -->
+        <div class="card">
+          <div style="font-weight:700;color:var(--muted);margin-bottom:16px">⚠️ Marqueurs perturbateurs</div>
+          <div id="disruptiveMarkers"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="hint">Session locale • Auto-sauvegarde • Sans serveur • Conçu pour affichage TV</div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  // Elements
+  const display = document.getElementById('display');
+  const startPause = document.getElementById('startPause');
+  const lapBtn = document.getElementById('lap');
+  const markOpBtn = document.getElementById('markOp');
+  const endBtn = document.getElementById('end');
+  const resetBtn = document.getElementById('reset');
+  const stateEl = document.getElementById('state');
+  const progress = document.getElementById('progress');
+  const targetMin = document.getElementById('targetMin');
+  const warnMin = document.getElementById('warnMin');
+  const modeSel = document.getElementById('mode');
+  const site = document.getElementById('site');
+  const po = document.getElementById('po');
+  const nowBox = document.getElementById('now');
+  const tableBody = document.querySelector('#logTable tbody');
+  const totalCell = document.getElementById('totalCell');
+  const exportBtn = document.getElementById('exportCsv');
+  const exportHtmlBtn = document.getElementById('exportHtml');
+  const fullscreenBtn = document.getElementById('fullscreen');
+
+  const tabs = document.querySelectorAll('.tab');
+  const viewTimer = document.getElementById('view-timer');
+  const viewParams = document.getElementById('view-params');
+  const viewAnalysis = document.getElementById('view-analysis');
+
+  // Params elements
+  const op1 = document.getElementById('op1');
+  const op2 = document.getElementById('op2');
+  const op3 = document.getElementById('op3');
+  const opDefault = document.getElementById('opDefault');
+  const quickMarkers = document.getElementById('quickMarkers');
+  const saveParams = document.getElementById('saveParams');
+  const resetParams = document.getElementById('resetParams');
+
+  // Operation containers
+  const opsDebutContainer = document.getElementById('opsDebutContainer');
+  const opsFinContainer = document.getElementById('opsFinContainer');
+  const opsVideContainer = document.getElementById('opsVideContainer');
+
+  // Chips areas
+  const opsChips = document.getElementById('opsChips'); // operators chips
+  const phaseChips = document.getElementById('phaseChips');
+  const opsPhaseChips = document.getElementById('opsPhaseChips');
+
+  // Analysis elements
+  const refreshAnalysis = document.getElementById('refreshAnalysis');
+
+  // Session state
+  let startTs = null;      // ms epoch of start
+  let timerId = null;      // interval id
+  let paused = true;
+  let elapsedMs = 0;       // counted time when paused
+  let prepaElapsedMs = 0;
+  let sessionElapsedMs = 0;
+  let marks = [];          // {t, at, op, phase, label, kind, note}
+  let activeOp = '';
+  let activePhase = 'Début de PO';
+
+  // --- MODIFICATION: suivi de progression des opérations validées (par opérateur et par phase) ---
+  // Stocké comme { 'op1': { 'Début de PO': Set([...opName]), 'Fin de PO': Set([...]), 'Vide de ligne': Set([...]) } }
+  let completedOps = {};
+
+  const runtime = { shouldScrollToCurrent: false, focusedOperator: 0 };
+
+  // Defaults with operator assignments
+  const DEFAULTS = {
+    operators: {op1:'Op 1', op2:'Op 2', op3:'Op 3', def:'op1'},
+    quick: ['Arrêt','Reprise','Attente CQ','Manque composant','Purge','Réglage'],
+    phases: {
+      'Début de PO': [
+        {name: 'Annonce arrêt', operator: 'op1'},
+        {name: 'Vidange partielle', operator: 'op1'},
+        {name: 'Nettoyage zone 1', operator: 'op2'},
+        {name: 'Changement format', operator: 'op1'},
+        {name: 'Réglages caméra', operator: 'op2'}
+      ],
+      'Fin de PO': [
+        {name: 'Dernières unités', operator: 'op1'},
+        {name: 'Comptage final', operator: 'op2'},
+        {name: 'Étiquette fin de lot', operator: 'op1'},
+        {name: 'Sécurisation composants', operator: 'op2'}
+      ],
+      'Vide de ligne': [
+        {name: 'Arrêt convoyeurs', operator: 'op1'},
+        {name: 'Purge composants', operator: 'op1'},
+        {name: 'Nettoyage approfondi', operator: 'op2'},
+        {name: 'Contrôle croisé A/B', operator: 'op2'},
+        {name: 'Validation qualité', operator: 'op1'}
+      ]
+    }
+  };
+
+  // Clock in header
+  setInterval(()=>{ nowBox.textContent = new Date().toLocaleString(); },1000);
+
+  // Helpers
+  const pad=n=>String(n).padStart(2,'0');
+  function fmt(ms){
+    const s = Math.max(0, Math.floor(ms/1000));
+    const hh = Math.floor(s/3600);
+    const mm = Math.floor((s%3600)/60);
+    const ss = s%60;
+    return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  }
+  function csvEscape(v){ return '\"'+String(v).replaceAll('\"','\"\"')+'\"'; }
+  
+  function initializeCompletedOps() {
+    const operators = ['op1', 'op2', 'op3'];
+    const phases = ['Début de PO', 'Fin de PO', 'Vide de ligne'];
+
+    operators.forEach(op => {
+      if (!completedOps[op]) {
+        completedOps[op] = {};
+      }
+      phases.forEach(phase => {
+        if (!completedOps[op][phase]) {
+          completedOps[op][phase] = new Set();
+        }
+      });
+    });
+  }
+
+  function ensureCompletedStructures() {
+    initializeCompletedOps();
+  }
+
+  function cloneCompleted(raw){
+    // Convertir les anciennes données si nécessaire
+    if (raw && typeof raw === 'object') {
+      // Ancien format : {phase: string[]} -> nouveau format : {operator: {phase: Set}}
+      if (raw['Début de PO'] && Array.isArray(raw['Début de PO'])) {
+        // Migration depuis l'ancien format
+        return convertOldCompletedFormat(raw);
+      }
+      
+      // Nouveau format
+      const out = {};
+      const operators = ['op1', 'op2', 'op3'];
+      const phases = ['Début de PO', 'Fin de PO', 'Vide de ligne'];
+      
+      operators.forEach(op => {
+        out[op] = {};
+        phases.forEach(phase => {
+          if (raw[op] && raw[op][phase] && Array.isArray(raw[op][phase])) {
+            out[op][phase] = new Set(raw[op][phase]);
+          } else {
+            out[op][phase] = new Set();
+          }
+        });
+      });
+      return out;
+    }
+    
+    // Initialisation par défaut
+    const out = {};
+    const operators = ['op1', 'op2', 'op3'];
+    const phases = ['Début de PO', 'Fin de PO', 'Vide de ligne'];
+    operators.forEach(op => {
+      out[op] = {};
+      phases.forEach(phase => {
+        out[op][phase] = new Set();
+      });
+    });
+    return out;
+  }
+  
+  function convertOldCompletedFormat(oldFormat) {
+    // Pour la migration, on assigne toutes les opérations à op1 par défaut
+    const out = {};
+    const operators = ['op1', 'op2', 'op3'];
+    const phases = ['Début de PO', 'Fin de PO', 'Vide de ligne'];
+    
+    operators.forEach(op => {
+      out[op] = {};
+      phases.forEach(phase => {
+        if (op === 'op1' && oldFormat[phase] && Array.isArray(oldFormat[phase])) {
+          out[op][phase] = new Set(oldFormat[phase]);
+        } else {
+          out[op][phase] = new Set();
+        }
+      });
+    });
+    return out;
+  }
+
+  function serializableCompleted(){
+    // convert Sets to arrays for storage
+    const out = {};
+    Object.keys(completedOps).forEach(op => {
+      out[op] = {};
+      Object.keys(completedOps[op]).forEach(phase => {
+        out[op][phase] = Array.from(completedOps[op][phase]);
+      });
+    });
+    return out;
+  }
+
+  // Storage
+  const KEY='smed_timer_v4'; // Changed version to handle new format
+  function save(){
+    try{
+      const payload={
+        elapsedMs,paused,marks,
+        site:site.value,po:po.value,mode:modeSel.value,target:targetMin.value,warn:warnMin.value,
+        activeOp,activePhase,params:getParams(),
+        completedOps: serializableCompleted()
+      };
+      localStorage.setItem(KEY, JSON.stringify(payload));
+    }catch(e){}
+  }
+  
+  function load(){
+    const raw=localStorage.getItem(KEY);
+    if(!raw){
+      // Essayer l'ancien format
+      const oldRaw = localStorage.getItem('smed_timer_v3');
+      if (oldRaw) {
+        try {
+          const oldData = JSON.parse(oldRaw);
+          // Migrer les données
+          migrateOldData(oldData);
+          return;
+        } catch(e) {}
+      }
+      
+      // seed defaults
+      setParams(DEFAULTS);
+      renderParams();
+      buildUIFromParams();
+      render();
+      return;
+    }
+    try{
+      const p=JSON.parse(raw);
+      elapsedMs=p.elapsedMs||0; paused=true; marks=p.marks||[];
+      site.value=p.site||''; po.value=p.po||'';
+      modeSel.value=p.mode||'countup'; targetMin.value=p.target||40; warnMin.value=p.warn||35;
+      activeOp = p.activeOp || '';
+      activePhase = p.activePhase || 'Début de PO';
+      completedOps = cloneCompleted(p.completedOps);
+      setParams(p.params||DEFAULTS);
+      renderParams();
+      buildUIFromParams();
+      // rebuild log rows
+      tableBody.innerHTML='';
+      marks.forEach((m,i)=> addRowToTable(i+1, m));
+      render();
+    }catch(e){
+      setParams(DEFAULTS); renderParams(); buildUIFromParams(); render();
+    }
+  }
+  
+  function migrateOldData(oldData) {
+    // Migrer les anciennes données vers le nouveau format
+    elapsedMs = oldData.elapsedMs || 0; 
+    paused = true; 
+    marks = oldData.marks || [];
+    site.value = oldData.site || ''; 
+    po.value = oldData.po || '';
+    modeSel.value = oldData.mode || 'countup'; 
+    targetMin.value = oldData.target || 40; 
+    warnMin.value = oldData.warn || 35;
+    activeOp = oldData.activeOp || '';
+    activePhase = oldData.activePhase || 'Début de PO';
+    
+    // Migrer les paramètres d'opérations
+    if (oldData.params && oldData.params.phases) {
+      const newParams = {
+        operators: oldData.params.operators || DEFAULTS.operators,
+        quick: oldData.params.quick || DEFAULTS.quick,
+        phases: {}
+      };
+      
+      Object.keys(oldData.params.phases).forEach(phase => {
+        newParams.phases[phase] = [];
+        const oldOps = oldData.params.phases[phase] || [];
+        oldOps.forEach(opName => {
+          // Assigner par défaut à op1
+          newParams.phases[phase].push({name: opName, operator: 'op1'});
+        });
+      });
+      
+      setParams(newParams);
+    } else {
+      setParams(DEFAULTS);
+    }
+    
+    // Migrer les opérations complétées
+    completedOps = cloneCompleted(oldData.completedOps);
+    
+    renderParams();
+    buildUIFromParams();
+    tableBody.innerHTML='';
+    marks.forEach((m,i)=> addRowToTable(i+1, m));
+    render();
+    
+    // Sauvegarder dans le nouveau format
+    save();
+  }
+
+  // Params get/set
+  function getParams(){
+    return {
+      operators:{ op1:op1.value||'', op2:op2.value||'', op3:op3.value||'', def:opDefault.value||'' },
+      quick: (quickMarkers.value||'').split(',').map(s=>s.trim()).filter(Boolean),
+      phases: {
+        'Début de PO': getOperationsFromContainer(opsDebutContainer),
+        'Fin de PO': getOperationsFromContainer(opsFinContainer),
+        'Vide de ligne': getOperationsFromContainer(opsVideContainer)
+      }
+    };
+  }
+  
+  function getOperationsFromContainer(container) {
+    const operations = [];
+    const items = container.querySelectorAll('.operation-item');
+    items.forEach(item => {
+      const nameInput = item.querySelector('input');
+      const operatorSelect = item.querySelector('select');
+      if (nameInput.value.trim()) {
+        operations.push({
+          name: nameInput.value.trim(),
+          operator: operatorSelect.value
+        });
+      }
+    });
+    return operations;
+  }
+  
+  function setParams(params){
+    const p = params || DEFAULTS;
+    op1.value = p.operators?.op1 || '';
+    op2.value = p.operators?.op2 || '';
+    op3.value = p.operators?.op3 || '';
+    opDefault.value = p.operators?.def || '';
+    quickMarkers.value = (p.quick||[]).join(', ');
+    
+    // Remplir les conteneurs d'opérations
+    setOperationsInContainer(opsDebutContainer, p.phases?.['Début de PO'] || []);
+    setOperationsInContainer(opsFinContainer, p.phases?.['Fin de PO'] || []);
+    setOperationsInContainer(opsVideContainer, p.phases?.['Vide de ligne'] || []);
+  }
+  
+  function setOperationsInContainer(container, operations) {
+    container.innerHTML = '';
+    operations.forEach(op => {
+      addOperationToContainer(container, op.name, op.operator);
+    });
+  }
+
+  // Global function for adding operations (called from onclick)
+  window.addOperation = function(phase) {
+    const container = phase === 'Début de PO' ? opsDebutContainer :
+                     phase === 'Fin de PO' ? opsFinContainer : opsVideContainer;
+    addOperationToContainer(container, '', '');
+  };
+  
+  function addOperationToContainer(container, name = '', operator = '') {
+    const div = document.createElement('div');
+    div.className = 'operation-item';
+    
+    const operatorOptions = `
+      <option value="">Non assigné</option>
+      <option value="op1" ${operator === 'op1' ? 'selected' : ''}>Opérateur 1</option>
+      <option value="op2" ${operator === 'op2' ? 'selected' : ''}>Opérateur 2</option>
+      <option value="op3" ${operator === 'op3' ? 'selected' : ''}>Opérateur 3</option>
+    `;
+    
+    div.innerHTML = `
+      <input type="text" placeholder="Nom de l'opération" value="${name}">
+      <div style="display:flex;gap:8px;align-items:center">
+        <select>${operatorOptions}</select>
+        <button class="remove-operation" onclick="this.parentElement.parentElement.remove()">×</button>
+      </div>
+    `;
+    
+    container.appendChild(div);
+  }
+
+  // UI builders
+  function buildUIFromParams(){
+    const p=getParams();
+    initializeCompletedOps();
+    
+    // Operator chips
+    opsChips.innerHTML='';
+    const opsList = [p.operators.op1,p.operators.op2,p.operators.op3].filter(Boolean);
+    if(!activeOp){
+      if(p.operators.def && p.operators[p.operators.def]) activeOp=p.operators[p.operators.def];
+      else activeOp = opsList[0]||'';
+    }
+    opsList.forEach(name=>{
+      const chip=document.createElement('span');
+      chip.className='chip'+(name===activeOp?' active':'');
+      chip.addEventListener('click',()=>{ 
+        activeOp=name; 
+        [...opsChips.children].forEach(c=>c.classList.remove('active')); 
+        chip.classList.add('active');
+        buildOpsForPhase(); // Rebuild operations for new active operator
+        save();
+      });
+      // Add emoji avatar
+      const av = document.createElement('span'); av.className='avatar'; av.textContent='🧑‍🔧';
+      const textSpan = document.createElement('span'); textSpan.textContent=name;
+      chip.appendChild(av);
+      chip.appendChild(textSpan);
+      opsChips.appendChild(chip);
+    });
+
+    // Phase chips
+    phaseChips.innerHTML='';
+    const phases=['Début de PO','Fin de PO','Vide de ligne'];
+
+    phases.forEach(ph=>{
+      const chip=document.createElement('span');
+      chip.className='chip'+(ph===activePhase?' active':'');
+      chip.textContent=ph;
+      chip.addEventListener('click',()=>{
+        activePhase=ph;
+        // toggle green outline
+        [...phaseChips.children].forEach(c=>c.classList.remove('active'));
+        chip.classList.add('active');
+        // rebuild operations list
+        buildOpsForPhase();
+        save();
+      });
+      phaseChips.appendChild(chip);
+    });
+    buildOpsForPhase();
+  }
+
+  // --- MODIFICATION: rendu des pastilles numérotées filtrées par opérateur + gestion progression ---
+  function buildOpsForPhase(){
+    const p=getParams();
+    opsPhaseChips.innerHTML='';
+    
+    // Get current active operator key
+    const activeOpKey = getActiveOperatorKey();
+    if (!activeOpKey) return;
+    
+    // Filter operations for active operator and phase
+    const allOps = p.phases[activePhase]||[];
+    const filteredOps = allOps.filter(op => op.operator === activeOpKey);
+    
+    if (filteredOps.length === 0) {
+      const noOpsMsg = document.createElement('div');
+      noOpsMsg.className = 'subtle';
+      noOpsMsg.textContent = 'Aucune opération assignée à cet opérateur pour cette phase.';
+      opsPhaseChips.appendChild(noOpsMsg);
+      return;
+    }
+
+    // déterminer l'index de l'opération courante (première non faite)
+    const doneSet = completedOps[activeOpKey][activePhase] || new Set();
+    let currentIdx = filteredOps.findIndex(op => !doneSet.has(op.name));
+    if(currentIdx === -1 && filteredOps.length > 0) currentIdx = filteredOps.length - 1;
+
+    filteredOps.forEach((op, idx)=>{
+      const pill=document.createElement('span');
+      pill.className='op-pill';
+      // état visuel: done / current
+      if(doneSet.has(op.name)) pill.classList.add('done');
+      if(idx===currentIdx && !doneSet.has(op.name)) pill.classList.add('current');
+
+      // contenu: numéro + label + check
+      const num=document.createElement('span'); 
+      num.className='op-num'; 
+      num.textContent=String(idx+1).padStart(2,'0');
+      const label=document.createElement('span'); 
+      label.textContent=op.name;
+      const check=document.createElement('span'); 
+      check.className='op-check'; 
+      check.textContent='✓';
+      pill.appendChild(num); 
+      pill.appendChild(label); 
+      pill.appendChild(check);
+
+      pill.addEventListener('click',()=>{
+        // marquer comme fait si pas déjà fait
+        if(!doneSet.has(op.name)){
+          doneSet.add(op.name);
+          completedOps[activeOpKey][activePhase] = doneSet;
+          pill.classList.add('done');
+          pill.classList.remove('current');
+          addMark('op', op.name); // journaliser l'opération validée
+        }
+        // déplacer le liseré vert sur la prochaine non faite
+        const nextIdx = filteredOps.findIndex(operation => !doneSet.has(operation.name));
+        [...opsPhaseChips.children].forEach(c=>c.classList.remove('current'));
+        if(nextIdx !== -1){
+          opsPhaseChips.children[nextIdx].classList.add('current');
+        }
+        save();
+      });
+
+      opsPhaseChips.appendChild(pill);
+    });
+  }
+  
+  function getActiveOperatorKey() {
+    const p = getParams();
+    if (activeOp === p.operators.op1) return 'op1';
+    if (activeOp === p.operators.op2) return 'op2';
+    if (activeOp === p.operators.op3) return 'op3';
+    return null;
+  }
+
+  // Rendering
+  function render(){
+    const target = Number(targetMin.value||0)*60_000;
+    const warn = Number(warnMin.value||0)*60_000;
+
+    let current = elapsedMs;
+    if(!paused && startTs){ current += (Date.now()-startTs); }
+
+    if(modeSel.value==='countdown' && target>0){
+      const remain = Math.max(0, target-current);
+      display.textContent = fmt(remain);
+    }else{
+      display.textContent = fmt(current);
+    }
+
+    // progress bar & status color
+    let ratio = target>0 ? Math.min(1, current/target) : 0;
+    progress.style.width = (ratio*100)+"%";
+    let color = 'var(--accent)';
+    if(target>0){
+      if(current>target) color='var(--danger)';
+      else if(current>warn) color='var(--warn)';
+    }
+    progress.style.background = color;
+
+    stateEl.textContent = paused ? 'En pause' : 'En cours';
+
+    totalCell.textContent = fmt(current);
+  }
+
+  function tick(){ render(); }
+
+  // Timer controls
+  function start(){ if(!paused){return;} paused=false; startTs = Date.now(); timerId = setInterval(tick, 250); updateStartBtn(); }
+  function pause(){ if(paused){return;} paused=true; elapsedMs += (Date.now()-startTs); clearInterval(timerId); timerId=null; updateStartBtn(); }
+  function updateStartBtn(){
+    if(paused){ startPause.textContent='▶️ Reprendre'; startPause.classList.remove('ghost'); startPause.classList.add('primary'); }
+    else { startPause.textContent='⏸️ Pause'; startPause.classList.remove('primary'); startPause.classList.add('ghost'); }
+  }
+  function reset(){
+    paused=true; clearInterval(timerId); timerId=null; startTs=null; elapsedMs=0; marks=[]; tableBody.innerHTML='';
+    startPause.textContent='▶️ Démarrer'; startPause.classList.add('primary');
+    // --- MODIFICATION: réinitialiser la progression des opérations par opérateur ---
+    completedOps = {};
+    initializeCompletedOps();
+    buildOpsForPhase();
+    render(); save();
+  }
+
+  function addRowToTable(idx, m){
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${idx}</td>`+
+      `<td>${new Date(m.at).toLocaleTimeString()}</td>`+
+      `<td>${m.op||''}</td>`+
+      `<td>${m.phase||''}</td>`+
+      `<td>${m.label}</td>`+
+      `<td>${fmt(m.t)}</td>`+
+      `<td contenteditable="true" data-idx="${idx-1}" class="noteCell">${m.note||''}</td>`;
+    tableBody.appendChild(tr);
+  }
+
+  function addMark(kind='mark', label='Marque'){ // kind: 'mark' | 'op' | 'end'
+    const now=new Date();
+    const ms = paused ? elapsedMs : (elapsedMs + (Date.now()-startTs));
+    const entry = {t:ms, at:now.toISOString(), op:activeOp||'', phase:activePhase||'', label, kind, note:''};
+    marks.push(entry);
+    addRowToTable(marks.length, entry);
+  }
+
+  // --- CALCULS POUR L'ANALYSE (adaptés au nouveau format) ---
+  function calculateAnalysis() {
+    const targetMs = Number(targetMin.value || 0) * 60_000;
+    const currentMs = elapsedMs + (paused ? 0 : (Date.now() - (startTs || Date.now())));
+    const p = getParams();
+    
+    // Calcul des durées par phase et par opérateur basé sur les événements
+    const phaseDurations = { 'Début de PO': 0, 'Fin de PO': 0, 'Vide de ligne': 0 };
+    const operatorDurations = {};
+    const operationDurations = {};
+    
+    // Initialiser les durées des opérateurs
+    [p.operators.op1, p.operators.op2, p.operators.op3].filter(Boolean).forEach(opName => {
+      operatorDurations[opName] = 0;
+    });
+    
+    // Analyser les segments de temps entre les événements
+    if (marks.length === 0) {
+      // Pas d'événements -> tout le temps va à la phase/opérateur actif
+      phaseDurations[activePhase] = currentMs;
+      if (activeOp) {
+        operatorDurations[activeOp] = (operatorDurations[activeOp] || 0) + currentMs;
+      }
+    } else {
+      let lastTime = 0;
+      let currentPhase = activePhase;
+      let currentOperator = activeOp;
+      
+      marks.forEach((mark, index) => {
+        // Durée du segment précédent
+        const segmentDuration = mark.t - lastTime;
+        
+        // Attribuer le temps au dernier état connu
+        if (segmentDuration > 0) {
+          phaseDurations[currentPhase] = (phaseDurations[currentPhase] || 0) + segmentDuration;
+          if (currentOperator) {
+            operatorDurations[currentOperator] = (operatorDurations[currentOperator] || 0) + segmentDuration;
+          }
+          
+          // Si c'est une opération validée, compter le temps pour cette opération spécifique
+          if (mark.kind === 'op' && mark.label) {
+            operationDurations[mark.label] = (operationDurations[mark.label] || 0) + segmentDuration;
+          }
+        }
+        
+        // Mettre à jour l'état pour le prochain segment
+        currentPhase = mark.phase || currentPhase;
+        currentOperator = mark.op || currentOperator;
+        lastTime = mark.t;
+      });
+      
+      // Dernier segment: du dernier événement à maintenant
+      const finalDuration = currentMs - lastTime;
+      if (finalDuration > 0) {
+        phaseDurations[currentPhase] = (phaseDurations[currentPhase] || 0) + finalDuration;
+        if (currentOperator) {
+          operatorDurations[currentOperator] = (operatorDurations[currentOperator] || 0) + finalDuration;
+        }
+      }
+    }
+    
+    // Calcul des taux de complétion (agrégés par phase, tous opérateurs confondus)
+    const completionRates = {};
+    ['Début de PO', 'Fin de PO', 'Vide de ligne'].forEach(phase => {
+      const allOps = p.phases[phase] || [];
+      let totalCompleted = 0;
+      
+      // Compter les opérations complétées par tous les opérateurs
+      ['op1', 'op2', 'op3'].forEach(opKey => {
+        if (completedOps[opKey] && completedOps[opKey][phase]) {
+          totalCompleted += completedOps[opKey][phase].size;
+        }
+      });
+      
+      completionRates[phase] = allOps.length > 0 ? (totalCompleted / allOps.length) * 100 : 0;
+    });
+    
+    // Top 3 opérations contributrices (basé sur les durées d'exécution)
+    let topOperations = [];
+    if (Object.keys(operationDurations).length > 0) {
+      topOperations = Object.entries(operationDurations)
+        .map(([operation, duration]) => ({
+          operation,
+          duration,
+          percentage: currentMs > 0 ? (duration / currentMs) * 100 : 0
+        }))
+        .sort((a, b) => b.duration - a.duration)
+        .slice(0, 3);
+    }
+    
+    // Top 3 phases contributrices (si dépassement)
+    let topContributors = [];
+    if (currentMs > targetMs && targetMs > 0) {
+      topContributors = Object.entries(phaseDurations)
+        .map(([phase, duration]) => ({
+          phase,
+          duration,
+          excess: Math.max(0, duration - (targetMs / 3)) // approximation: cible / 3 par phase
+        }))
+        .filter(item => item.excess > 0)
+        .sort((a, b) => b.excess - a.excess)
+        .slice(0, 3);
+    }
+    
+    // Marqueurs perturbateurs (fréquence des 'mark')
+    const markerCounts = {};
+    marks.filter(m => m.kind === 'mark').forEach(m => {
+      markerCounts[m.label] = (markerCounts[m.label] || 0) + 1;
+    });
+    const disruptiveMarkers = Object.entries(markerCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    return {
+      currentMs,
+      targetMs,
+      phaseDurations,
+      operatorDurations,
+      operationDurations,
+      completionRates,
+      topOperations,
+      topContributors,
+      disruptiveMarkers
+    };
+  }
+
+  // --- FONCTION: RENDU DE L'ANALYSE ---
+  function renderAnalysis() {
+    const analysis = calculateAnalysis();
+    const { currentMs, targetMs, phaseDurations, operatorDurations, operationDurations, completionRates, topOperations, topContributors, disruptiveMarkers } = analysis;
+    
+    // KPIs principaux
+    document.getElementById('kpi-duration').textContent = fmt(currentMs);
+    document.getElementById('kpi-target').textContent = targetMs > 0 ? Math.round(targetMs / 60_000) : '--';
+    
+    const gap = currentMs - targetMs;
+    const gapEl = document.getElementById('kpi-gap');
+    if (targetMs > 0) {
+      gapEl.textContent = (gap >= 0 ? '+' : '') + fmt(Math.abs(gap));
+      gapEl.className = gap > 0 ? 'kpi-value kpi-danger' : 'kpi-value kpi-gain';
+    } else {
+      gapEl.textContent = '--';
+      gapEl.className = 'kpi-value';
+    }
+    
+    const potentialEl = document.getElementById('kpi-potential');
+    if (gap > 0) {
+      potentialEl.textContent = fmt(gap);
+    } else {
+      potentialEl.textContent = 'Objectif atteint';
+    }
+    
+    // Répartition par phases
+    const phasesEl = document.getElementById('phasesBreakdown');
+    phasesEl.innerHTML = '';
+    
+    const totalDuration = Object.values(phaseDurations).reduce((a, b) => a + b, 0);
+    
+    Object.entries(phaseDurations).forEach(([phase, duration]) => {
+      const percentage = totalDuration > 0 ? (duration / totalDuration) * 100 : 0;
+      
+      const barEl = document.createElement('div');
+      barEl.className = 'phase-bar';
+      barEl.innerHTML = `
+        <div class="phase-name">${phase}</div>
+        <div class="phase-progress">
+          <div class="phase-fill" style="width: ${percentage}%"></div>
+          <div class="phase-text">${percentage.toFixed(1)}%</div>
+        </div>
+        <div class="phase-duration">${fmt(duration)}</div>
+      `;
+      phasesEl.appendChild(barEl);
+    });
+    
+    // Répartition par opérateurs
+    const operatorsEl = document.getElementById('operatorsBreakdown');
+    operatorsEl.innerHTML = '';
+    
+    const totalOperatorTime = Object.values(operatorDurations).reduce((a, b) => a + b, 0);
+    
+    if (totalOperatorTime > 0) {
+      Object.entries(operatorDurations).forEach(([operator, duration]) => {
+        const percentage = totalOperatorTime > 0 ? (duration / totalOperatorTime) * 100 : 0;
+        
+        const barEl = document.createElement('div');
+        barEl.className = 'phase-bar';
+        barEl.innerHTML = `
+          <div class="phase-name">${operator}</div>
+          <div class="phase-progress">
+            <div class="phase-fill" style="width: ${percentage}%"></div>
+            <div class="phase-text">${percentage.toFixed(1)}%</div>
+          </div>
+          <div class="phase-duration">${fmt(duration)}</div>
+        `;
+        operatorsEl.appendChild(barEl);
+      });
+    } else {
+      operatorsEl.innerHTML = '<div class="no-data">Aucune donnée d\'activité par opérateur disponible</div>';
+    }
+    
+    // Taux de complétion
+    const completionEl = document.getElementById('completionRates');
+    completionEl.innerHTML = '';
+    
+    Object.entries(completionRates).forEach(([phase, rate]) => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'completion-item';
+      
+      let rateClass = 'completion-partial';
+      if (rate === 100) rateClass = 'completion-100';
+      else if (rate === 0) rateClass = 'completion-0';
+      
+      const p = getParams();
+      const totalOps = (p.phases[phase] || []).length;
+      const completedCount = Math.round((rate / 100) * totalOps);
+      
+      itemEl.innerHTML = `
+        <div>${phase}</div>
+        <div class="completion-rate ${rateClass}">${completedCount}/${totalOps} (${rate.toFixed(0)}%)</div>
+      `;
+      completionEl.appendChild(itemEl);
+    });
+    
+    // Top 3 opérations contributrices
+    const topOperationsEl = document.getElementById('topOperations');
+    topOperationsEl.innerHTML = '';
+    
+    if (topOperations.length === 0) {
+      topOperationsEl.innerHTML = '<div class="no-data">Aucune opération avec temps mesuré disponible</div>';
+    } else {
+      const listEl = document.createElement('ul');
+      listEl.className = 'top-contributors';
+      
+      topOperations.forEach((item, index) => {
+        const itemEl = document.createElement('li');
+        itemEl.className = 'contributor';
+        itemEl.innerHTML = `
+          <div>
+            <span class="contributor-rank">#${index + 1}</span>
+            ${item.operation}
+          </div>
+          <div>
+            ${fmt(item.duration)} (${item.percentage.toFixed(1)}%)
+          </div>
+        `;
+        listEl.appendChild(itemEl);
+      });
+      
+      topOperationsEl.appendChild(listEl);
+    }
+    
+    // Top 3 phases contributrices
+    const contributorsEl = document.getElementById('topContributors');
+    contributorsEl.innerHTML = '';
+    
+    if (topContributors.length === 0) {
+      contributorsEl.innerHTML = '<div class="no-data">Aucun dépassement détecté ou cible non définie</div>';
+    } else {
+      const listEl = document.createElement('ul');
+      listEl.className = 'top-contributors';
+      
+      topContributors.forEach((contributor, index) => {
+        const itemEl = document.createElement('li');
+        itemEl.className = 'contributor';
+        itemEl.innerHTML = `
+          <div>
+            <span class="contributor-rank">#${index + 1}</span>
+            ${contributor.phase}
+          </div>
+          <div>+${fmt(contributor.excess)}</div>
+        `;
+        listEl.appendChild(itemEl);
+      });
+      
+      contributorsEl.appendChild(listEl);
+    }
+    
+    // Marqueurs perturbateurs
+    const markersEl = document.getElementById('disruptiveMarkers');
+    markersEl.innerHTML = '';
+    
+    if (disruptiveMarkers.length === 0) {
+      markersEl.innerHTML = '<div class="no-data">Aucun marqueur perturbateur enregistré</div>';
+    } else {
+      const listEl = document.createElement('div');
+      listEl.className = 'markers-list';
+      
+      disruptiveMarkers.forEach(([marker, count]) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'marker-item';
+        itemEl.innerHTML = `
+          <div>${marker}</div>
+          <div class="marker-count">${count}</div>
+        `;
+        listEl.appendChild(itemEl);
+      });
+
+      markersEl.appendChild(listEl);
+    }
+  }
+
+  function refreshAll() {
+    buildUIFromParams();
+    render();
+    renderAnalysis();
+  }
+
+  function exportCSV(){
+    const header = ['Date','Site/Ligne','PO','Mode','Cible(min)','Alerte(min)','Index','Horodatage','Durée(ms)','Durée(hh:mm:ss)','Opérateur','Phase','Événement','Note'];
+    const date = new Date().toISOString();
+    const rows = marks.map((m,i)=>[
+      date, site.value, po.value, modeSel.value, targetMin.value, warnMin.value,
+      i+1, m.at, m.t, fmt(m.t), m.op||'', m.phase||'', m.label, m.note||''
+    ]);
+    const csv = [header, ...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const name = `smed_${(site.value||'site').replace(/\s+/g,'-').toLowerCase()}_${new Date().toISOString().replaceAll(':','-')}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function exportHTML(){
+    const p = getParams();
+    const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport SMED - ${site.value || 'Site'} - ${po.value || 'PO'}</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+.container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h1 { color: #2563eb; border-bottom: 3px solid #2563eb; padding-bottom: 10px; }
+.header { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+.info-box { background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb; }
+.info-box h3 { margin: 0 0 10px 0; color: #1e40af; }
+.summary { background: #ecfdf5; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 30px; }
+.summary h3 { color: #047857; margin: 0 0 15px 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.stat { text-align: center; }
+.stat-value { font-size: 2em; font-weight: bold; color: #1f2937; }
+.stat-label { color: #6b7280; font-size: 0.9em; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+th { background: #f9fafb; font-weight: 600; color: #374151; }
+tr:hover { background: #f9fafb; }
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 30px 0; }
+.phase-card { background: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #6366f1; }
+.phase-title { color: #4338ca; font-weight: bold; margin-bottom: 15px; }
+.op-list { list-style: none; padding: 0; }
+.op-item { padding: 8px 12px; margin: 5px 0; background: white; border-radius: 4px; border-left: 3px solid #e5e7eb; }
+.op-done { border-left-color: #10b981; background: #ecfdf5; }
+.op-operator { font-size: 0.8em; color: #6b7280; margin-left: 8px; }
+.footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Rapport de Changement SMED</h1>
+  
+  <div class="header">
+    <div class="info-box">
+      <h3>🔍 Informations de session</h3>
+      <p><strong>Site/Ligne:</strong> ${site.value || 'Non spécifié'}</p>
+      <p><strong>Ordre de Production:</strong> ${po.value || 'Non spécifié'}</p>
+      <p><strong>Date de génération:</strong> ${new Date().toLocaleString()}</p>
+    </div>
+    <div class="info-box">
+      <h3>⏱️ Configuration</h3>
+      <p><strong>Mode:</strong> ${modeSel.value === 'countup' ? 'Chrono (compte)' : 'Décompte (cible)'}</p>
+      <p><strong>Cible:</strong> ${targetMin.value} minutes</p>
+      <p><strong>Alerte:</strong> ${warnMin.value} minutes</p>
+    </div>
+  </div>
+
+  <div class="summary">
+    <h3>📈 Résumé de performance</h3>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">${fmt(elapsedMs + (paused ? 0 : (Date.now() - (startTs || Date.now()))))}</div>
+        <div class="stat-label">Durée totale</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${marks.length}</div>
+        <div class="stat-label">Événements enregistrés</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${marks.filter(m => m.kind === 'op').length}</div>
+        <div class="stat-label">Opérations validées</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phases">
+    ${['Début de PO', 'Fin de PO', 'Vide de ligne'].map(phase => {
+      const ops = p.phases[phase] || [];
+      let completedCount = 0;
+      
+      // Count completed operations across all operators
+      ['op1', 'op2', 'op3'].forEach(opKey => {
+        if (completedOps[opKey] && completedOps[opKey][phase]) {
+          completedCount += completedOps[opKey][phase].size;
+        }
+      });
+      
+      return `
+        <div class="phase-card">
+          <div class="phase-title">${phase}</div>
+          <ul class="op-list">
+            ${ops.map(op => {
+              let isCompleted = false;
+              // Check if operation is completed by any operator
+              ['op1', 'op2', 'op3'].forEach(opKey => {
+                if (completedOps[opKey] && completedOps[opKey][phase] && completedOps[opKey][phase].has(op.name)) {
+                  isCompleted = true;
+                }
+              });
+              
+              const operatorName = op.operator === 'op1' ? p.operators.op1 :
+                                 op.operator === 'op2' ? p.operators.op2 :
+                                 op.operator === 'op3' ? p.operators.op3 : 'Non assigné';
+              
+              return `
+                <li class="op-item ${isCompleted ? 'op-done' : ''}">
+                  ${isCompleted ? '✅' : '⏳'} ${op.name}
+                  <span class="op-operator">(${operatorName})</span>
+                </li>
+              `;
+            }).join('')}
+          </ul>
+          <div style="margin-top: 15px; font-size: 0.9em; color: #6b7280;">
+            Progression: ${completedCount}/${ops.length} (${ops.length > 0 ? Math.round((completedCount / ops.length) * 100) : 0}%)
+          </div>
+        </div>
+      `;
+    }).join('')}
+  </div>
+
+  <h3>📋 Journal détaillé des événements</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Horodatage</th>
+        <th>Opérateur</th>
+        <th>Phase</th>
+        <th>Événement</th>
+        <th>Durée</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${marks.map((m, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${new Date(m.at).toLocaleString()}</td>
+          <td>${m.op || ''}</td>
+          <td>${m.phase || ''}</td>
+          <td>${m.label}</td>
+          <td>${fmt(m.t)}</td>
+          <td>${m.note || ''}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Rapport généré par Timer SMED • Session locale • ${new Date().toLocaleString()}</p>
+  </div>
+</div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], {type: 'text/html;charset=utf-8'});
+    const name = `rapport_smed_${(site.value||'site').replace(/\s+/g,'-').toLowerCase()}_${new Date().toISOString().slice(0,19).replaceAll(':','-')}.html`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); 
+    a.href = url; 
+    a.download = name; 
+    a.click(); 
+    URL.revokeObjectURL(url);
+  }
+
+  // TABS
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    const name=t.dataset.tab; 
+    if(name==='timer'){ 
+      viewTimer.style.display='grid'; 
+      viewParams.style.display='none'; 
+      viewAnalysis.style.display='none';
+    } else if(name==='params') { 
+      viewTimer.style.display='none'; 
+      viewParams.style.display='block'; 
+      viewAnalysis.style.display='none';
+    } else if(name==='analysis') {
+      viewTimer.style.display='none'; 
+      viewParams.style.display='none'; 
+      viewAnalysis.style.display='block';
+      renderAnalysis(); // Rafraîchir automatiquement
+    }
+  }));
+
+  // PARAMS actions
+  function renderParams(){ /* déjà peuplé via setParams */ }
+
+  saveParams.addEventListener('click',()=>{
+    buildUIFromParams();
+    // après modification des listes, on recalcule le "current" visuel
+    buildOpsForPhase();
+    save();
+    stateEl.textContent='Paramètres enregistrés';
+    setTimeout(()=>stateEl.textContent = paused?'En pause':'En cours',1500);
+  });
+  resetParams.addEventListener('click',()=>{ setParams(DEFAULTS); buildUIFromParams(); save(); });
+
+  // ANALYSIS actions
+  refreshAnalysis.addEventListener('click', renderAnalysis);
+
+  // INPUT persistence
+  targetMin.addEventListener('input', ()=>{ render(); save(); });
+  warnMin.addEventListener('input', ()=>{ render(); save(); });
+  modeSel.addEventListener('change', ()=>{ render(); save(); });
+  [site,po,op1,op2,op3,opDefault,quickMarkers].forEach(i=> i.addEventListener('input', save));
+
+  // Buttons
+  startPause.addEventListener('click', ()=>{ paused?start():pause(); save(); });
+  lapBtn.addEventListener('click', ()=>{ // quick marker chooser
+    const p=getParams();
+    const opts=p.quick||[]; const choice = opts.length? prompt('Marqueur rapide (ou saisir texte):\n'+opts.map((x,i)=>`${i+1}. ${x}`).join('\n')) : prompt('Marque:');
+    if(choice){
+      const idx=Number(choice); if(Number.isInteger(idx) && idx>=1 && idx<=opts.length){ addMark('mark', opts[idx-1]); } else { addMark('mark', String(choice)); }
+      save();
+    }
+  });
+  markOpBtn.addEventListener('click', ()=>{
+    // conserve le bouton existant; il enregistre une opération libre si besoin
+    const p=getParams(); 
+    const activeOpKey = getActiveOperatorKey();
+    if (!activeOpKey) {
+      alert('Veuillez sélectionner un opérateur actif');
+      return;
+    }
+    
+    const allOps = p.phases[activePhase] || [];
+    const filteredOps = allOps.filter(op => op.operator === activeOpKey);
+    
+    if(!filteredOps.length){ 
+      addMark('op','(opération)'); 
+    } else {
+      const pick=prompt(`Opération (${activePhase}) :\n`+filteredOps.map((x,i)=>`${i+1}. ${x.name}`).join('\n'));
+      if(pick){
+        const idx=Number(pick);
+        const label = (Number.isInteger(idx)&&idx>=1&&idx<=filteredOps.length) ? filteredOps[idx-1].name : String(pick);
+        addMark('op', label);
+        // si l'opération saisie correspond à une pastille non encore validée, on la coche aussi
+        const doneSet = completedOps[activeOpKey][activePhase] || new Set();
+        if(filteredOps.some(op => op.name === label) && !doneSet.has(label)){
+          doneSet.add(label); 
+          completedOps[activeOpKey][activePhase] = doneSet; 
+          buildOpsForPhase();
+        }
+      }
+    }
+    save();
+  });
+  endBtn.addEventListener('click', ()=>{ addMark('end','Fin changement'); pause(); save(); });
+  resetBtn.addEventListener('click', () => {
+    if (!confirm('Réinitialiser la session ?')) return;
+
+    // Chrono & journal
+    paused = true;
+    clearInterval(timerId);
+    timerId = null;
+    startTs = null;
+    elapsedMs = 0;
+    prepaElapsedMs = 0;
+    sessionElapsedMs = 0;
+    marks = [];
+    tableBody.innerHTML = '';
+
+    // Opérations validées -> vidage total
+    completedOps = {};
+    ensureCompletedStructures();
+
+    // Repartir en phase initiale et opérateur par défaut
+    activePhase = 'Début de PO';
+    const params = getParams();
+    const operatorKeys = ['op1', 'op2', 'op3'];
+    const defaultKey = params.operators.def && operatorKeys.includes(params.operators.def) ? params.operators.def : null;
+    const defaultIndex = defaultKey ? operatorKeys.indexOf(defaultKey) : 0;
+    const operatorNames = operatorKeys.map(key => params.operators[key]).filter(Boolean);
+    runtime.focusedOperator = defaultIndex >= 0 ? defaultIndex : 0;
+    const defaultOperatorName = defaultKey && params.operators[defaultKey] ? params.operators[defaultKey] : (operatorNames[0] || '');
+    activeOp = defaultOperatorName;
+
+    // Bouton démarrer cohérent
+    startPause.disabled = true;
+    startPause.classList.remove('ghost');
+    startPause.classList.add('primary');
+    startPause.textContent = '▶️ Démarrer';
+
+    // Sauvegarde + re-render + recentrage opé courante
+    runtime.shouldScrollToCurrent = true;
+    save(true);
+    refreshAll();
+
+    requestAnimationFrame(() => {
+      startPause.disabled = false;
+    });
+  });
+  exportBtn.addEventListener('click', exportCSV);
+  exportHtmlBtn.addEventListener('click', exportHTML);
+  fullscreenBtn.addEventListener('click', ()=>{ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); });
+
+  // Journal auto-scroll to latest entry
+  const logBox = document.querySelector('.log');
+  const observerTarget = tableBody;
+  function scrollLog(){ if(logBox){ logBox.scrollTop = logBox.scrollHeight; } }
+  setTimeout(scrollLog, 300);
+  if(observerTarget){
+    try{
+      const obs = new MutationObserver(muts=>{
+        if(muts.some(m=>m.addedNodes && m.addedNodes.length)) scrollLog();
+      });
+      obs.observe(observerTarget, {childList:true, subtree:true});
+    }catch(_){}
+  }
+
+  // Kick off
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
