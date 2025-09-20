@@ -49,6 +49,13 @@ header {
   justify-content:space-between;
   gap:12px;
 }
+.header-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:12px;
+  margin-left:auto;
+}
 .brand {
   font-weight:700;
   letter-spacing:0.12em;
@@ -95,6 +102,12 @@ main {
   .timer-grid {
     grid-template-columns: minmax(0,1fr) 360px;
   }
+}
+body.journal-hidden #journalAside {
+  display:none;
+}
+body.journal-hidden .timer-grid {
+  grid-template-columns:1fr !important;
 }
 .panel {
   background:rgba(23,36,71,.86);
@@ -158,15 +171,39 @@ main {
   gap:20px;
 }
 .timer-bar {
-  display:grid;
-  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  display:flex;
+  flex-wrap:wrap;
+  align-items:stretch;
+  justify-content:center;
   gap:18px;
-  align-items:center;
+}
+.timer-bar > * {
+  flex:1 1 260px;
+}
+.main-actions {
+  display:flex;
+  flex:2 1 320px;
+  gap:12px;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:stretch;
+}
+.main-actions button {
+  flex:1 1 160px;
+  min-height:52px;
+}
+@media (max-width:1279px) {
+  .main-actions {
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .main-actions button {
+    width:100%;
+  }
 }
 @media (max-width:900px) {
-  .timer-bar {
-    grid-template-columns:1fr;
-    justify-items:center;
+  .timer-bar > * {
+    flex:1 1 100%;
   }
 }
 .round-pill {
@@ -450,11 +487,52 @@ tfoot td { font-weight:700; }
 .tag { padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.1); font-size:0.7rem; letter-spacing:0.08em; }
 /* Parameters */
 .section-group { display:grid; gap:20px; }
-.params-grid { display:grid; gap:20px; }
-@media (min-width:1100px) {
-  .params-grid { grid-template-columns:320px minmax(0,1fr); }
+.general-panel { display:grid; gap:20px; }
+.general-settings-bar {
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  align-items:stretch;
 }
-.param-card { display:grid; gap:16px; }
+.param-tile {
+  background:rgba(15,26,52,.78);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius-lg);
+  padding:18px;
+  display:grid;
+  gap:12px;
+  min-width:220px;
+  flex:1 1 240px;
+}
+.param-tile h3 {
+  margin:0;
+  font-size:0.85rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--muted);
+}
+.general-actions {
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-self:stretch;
+  justify-content:flex-end;
+}
+.phases-panel {
+  display:grid;
+  gap:24px;
+}
+@media (max-width:900px) {
+  .general-actions {
+    width:100%;
+    flex-direction:row;
+    justify-content:flex-end;
+  }
+  .general-actions button {
+    flex:1 1 auto;
+  }
+}
 .switch-row { display:flex; align-items:center; gap:12px; }
 .switch-row input[type="checkbox"] { width:50px; height:26px; border-radius:999px; appearance:none; background:rgba(255,255,255,.08); position:relative; cursor:pointer; }
 .switch-row input[type="checkbox"]::after {
@@ -526,7 +604,10 @@ summary { cursor:pointer; }
         <button type="button" data-target="paramsPage" aria-controls="paramsPage" aria-selected="false">Paramètres</button>
         <button type="button" data-target="analysisPage" aria-controls="analysisPage" aria-selected="false">Analyse</button>
       </div>
-      <button id="fullscreen" class="ghost" type="button" aria-label="Plein écran"><span class="icon">⤢</span>Plein écran</button>
+      <div class="header-actions">
+        <button id="toggleJournal" class="ghost" type="button" aria-pressed="false" title="Afficher/Masquer Journal"><span class="icon">🗂</span>Masquer le journal</button>
+        <button id="fullscreen" class="ghost" type="button" aria-label="Plein écran"><span class="icon">⤢</span>Plein écran</button>
+      </div>
     </div>
   </header>
   <main>
@@ -568,7 +649,7 @@ summary { cursor:pointer; }
             <div class="ops-columns" id="opsPhaseChips"></div>
           </div>
         </div>
-        <aside class="panel compact">
+        <aside id="journalAside" class="panel compact">
           <div class="panel-title">
             <h2>Journal</h2>
             <div class="badge" id="logCount">0 entrées</div>
@@ -605,27 +686,34 @@ summary { cursor:pointer; }
       </div>
     </section>
     <section id="paramsPage" class="page" aria-labelledby="Paramètres">
-      <div class="panel">
+      <div class="panel general-panel">
         <div class="panel-title"><h2>Paramètres généraux</h2><div class="badge">Auto-save actif</div></div>
-        <div class="params-grid">
-          <div class="panel compact param-card">
+        <div class="general-settings-bar">
+          <div class="param-tile">
+            <h3>Opérateurs</h3>
             <div class="field"><label>Opérateur 1<input type="text" id="op1"></label></div>
             <div class="field"><label>Opérateur 2<input type="text" id="op2"></label></div>
             <div class="field"><label>Opérateur 3<input type="text" id="op3"></label></div>
+          </div>
+          <div class="param-tile">
+            <h3>Assignations</h3>
             <div class="field"><label>Opérateur par défaut<select id="defaultOperator"></select></label></div>
             <div class="switch-row"><input id="multiView" type="checkbox"><label for="multiView">Vue multi-opérateurs</label></div>
+          </div>
+          <div class="param-tile">
+            <h3>Alerte</h3>
             <div class="field"><label>Alerte (min)<input type="number" step="0.5" id="alertInput"></label></div>
             <button id="suggestAlert" type="button" class="ghost">Suggérer 85 %</button>
-            <div class="actions-row">
-              <button id="saveParams" class="primary" type="button">Sauvegarder</button>
-              <button id="resetParams" class="danger" type="button">Réinitialiser</button>
-            </div>
           </div>
-          <div class="panel compact" style="display:grid; gap:24px;">
-            <div class="panel-title"><h2>Phases et opérations</h2><span class="label-muted">Glisser-déposer pour réordonner</span></div>
-            <div id="phaseTables"></div>
+          <div class="general-actions">
+            <button id="saveParams" class="primary" type="button">Sauvegarder</button>
+            <button id="resetParams" class="danger" type="button">Réinitialiser</button>
           </div>
         </div>
+      </div>
+      <div class="panel compact phases-panel">
+        <div class="panel-title"><h2>Phases et opérations</h2><span class="label-muted">Glisser-déposer pour réordonner</span></div>
+        <div id="phaseTables"></div>
       </div>
     </section>
     <section id="analysisPage" class="page" aria-labelledby="Analyse">
@@ -726,6 +814,7 @@ summary { cursor:pointer; }
     exportCsv: document.getElementById('exportCsv'),
     exportHtml: document.getElementById('exportHtml'),
     fullscreen: document.getElementById('fullscreen'),
+    toggleJournal: document.getElementById('toggleJournal'),
     opsChips: document.getElementById('opsChips'),
     phaseChips: document.getElementById('phaseChips'),
     opsPhaseChips: document.getElementById('opsPhaseChips'),
@@ -758,6 +847,7 @@ summary { cursor:pointer; }
     animationFrame: null,
     lastTick: performance.now(),
     focusedOperator: state.defaultOperatorIndex || 0,
+    journalHidden: false,
     analysisTimeout: null
   };
 
@@ -1211,7 +1301,7 @@ summary { cursor:pointer; }
       state.line,
       state.po,
       state.mode,
-      mark.hc ? 'oui' : 'non',
+      mark.hc ? 'true' : 'false',
       target.toFixed(1),
       idx + 1,
       formatDuration(mark.t),
@@ -1533,13 +1623,19 @@ summary { cursor:pointer; }
       const text = e.target.result;
       const lines = text.split(/\r?\n/).filter(Boolean);
       const entries = lines.slice(1).map(line => {
+        if (!line.trim()) return null;
         const [name, time, operator] = line.split(';');
+        const cleanedName = (name || '').trim();
+        const numeric = Number.parseFloat((time || '').replace(',', '.'));
+        const operatorLabel = (operator || '').trim().toLowerCase();
+        const matchedIndex = state.operators.findIndex(op => (op || '').trim().toLowerCase() === operatorLabel && operatorLabel);
+        const operatorIndex = matchedIndex >= 0 ? matchedIndex : state.defaultOperatorIndex;
         return {
-          name: name?.trim() || 'Opération',
-          targetMin: Number(time?.replace(',', '.')) || 0,
-          operatorIndex: Math.max(0, state.operators.findIndex(op => op === operator?.trim())) || state.defaultOperatorIndex
+          name: cleanedName || 'Opération',
+          targetMin: Number.isFinite(numeric) ? numeric : 0,
+          operatorIndex
         };
-      });
+      }).filter(Boolean);
       if (entries.length) {
         state.phases[phase] = entries;
         saveState(true);
@@ -1664,6 +1760,9 @@ summary { cursor:pointer; }
     els.startPause.addEventListener('click', toggleTimer);
     els.lap.addEventListener('click', () => addEvent('Événement rapide'));
     els.markOp.addEventListener('click', () => {
+      if (state.activePhase === 'Prépa chgt de PO') {
+        showToast('Checklist Prépa (HC) : validation sans impact chrono', 'info');
+      }
       ensureCompletedStructures();
       const ops = state.phases[state.activePhase] || [];
       const operatorIndex = runtime.focusedOperator;
@@ -1691,14 +1790,19 @@ summary { cursor:pointer; }
     els.site.addEventListener('input', () => { state.site = els.site.value; saveState(); });
     els.po.addEventListener('input', () => { state.po = els.po.value; saveState(); });
     els.fullscreen.addEventListener('click', toggleFullscreen);
+    if (els.toggleJournal) {
+      els.toggleJournal.addEventListener('click', () => toggleJournalVisibility());
+    }
     els.saveParams.addEventListener('click', () => { saveState(true); });
     els.resetParams.addEventListener('click', () => { if (confirm('Réinitialiser toutes les phases ?')) resetState(); });
     els.refreshAnalysis.addEventListener('click', renderAnalysis);
     els.alertInput.addEventListener('change', () => { state.alertMin = Number(els.alertInput.value); saveState(); updateTargets(); updateDisplay(); });
     els.suggestAlert.addEventListener('click', () => {
-      const suggestion = Math.ceil(totalTargetMinutes() * 0.85);
-      els.alertInput.value = suggestion;
-      state.alertMin = suggestion;
+      const suggestion = Math.max(0, totalTargetMinutes() * 0.85);
+      const rounded = Math.round(suggestion * 2) / 2;
+      const displayValue = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+      els.alertInput.value = displayValue;
+      state.alertMin = rounded;
       saveState(true);
       updateTargets();
       updateDisplay();
@@ -1741,6 +1845,17 @@ summary { cursor:pointer; }
     document.addEventListener('keydown', handleShortcuts);
   }
 
+  function toggleJournalVisibility(force) {
+    const shouldHide = typeof force === 'boolean' ? force : !runtime.journalHidden;
+    runtime.journalHidden = shouldHide;
+    document.body.classList.toggle('journal-hidden', runtime.journalHidden);
+    if (els.toggleJournal) {
+      els.toggleJournal.setAttribute('aria-pressed', runtime.journalHidden ? 'true' : 'false');
+      els.toggleJournal.title = 'Afficher/Masquer Journal';
+      els.toggleJournal.innerHTML = `<span class="icon">🗂</span>${runtime.journalHidden ? 'Afficher le journal' : 'Masquer le journal'}`;
+    }
+  }
+
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => showToast('Impossible de passer en plein écran', 'error'));
@@ -1763,6 +1878,10 @@ summary { cursor:pointer; }
       event.preventDefault();
       els.lap.click();
     }
+    if (event.key.toLowerCase() === 'j') {
+      event.preventDefault();
+      toggleJournalVisibility();
+    }
     if (['1','2','3'].includes(event.key)) {
       runtime.focusedOperator = Number(event.key) - 1;
       renderOperatorChips();
@@ -1782,6 +1901,7 @@ summary { cursor:pointer; }
   }
 
   bindEvents();
+  toggleJournalVisibility(runtime.journalHidden);
   refreshAll();
   updateClock();
   renderAnalysis();
