@@ -357,6 +357,10 @@ button:not(:disabled):active { transform:translateY(1px); }
   gap:16px;
   min-height:220px;
 }
+.operator-card.focused {
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px rgba(61,220,151,.35);
+}
 .operator-header {
   display:flex;
   justify-content:space-between;
@@ -519,6 +523,42 @@ tfoot td { font-weight:700; }
   align-self:stretch;
   justify-content:flex-end;
 }
+.events-panel { display:grid; gap:16px; }
+.event-form {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:flex-end;
+}
+.event-form .field { flex:1 1 240px; }
+.event-form button { align-self:flex-end; min-height:48px; }
+.events-list {
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:grid;
+  gap:10px;
+}
+.events-list li {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:rgba(9,18,40,.6);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius);
+  padding:10px 14px;
+}
+.events-list li span { flex:1; }
+.events-list li button {
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;
+  padding:6px 12px;
+  background:rgba(255,255,255,.06);
+  cursor:pointer;
+}
+.events-list li button:hover { border-color:var(--danger); color:var(--danger); }
+.events-list .empty { color:var(--muted); font-style:italic; }
 .phases-panel {
   display:grid;
   gap:24px;
@@ -546,10 +586,22 @@ tfoot td { font-weight:700; }
 }
 .switch-row input[type="checkbox"]:checked { background:var(--accent); }
 .switch-row input[type="checkbox"]:checked::after { transform:translateX(24px); background:#021221; }
-.param-table { width:100%; border-collapse:separate; border-spacing:0 10px; }
-.param-table thead th { position:static; background:none; text-align:left; }
+.phase-table-wrapper {
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius-lg);
+  overflow:auto;
+  max-height:360px;
+}
+.param-table { width:100%; border-collapse:separate; border-spacing:0; min-width:520px; }
+.param-table thead th {
+  position:sticky;
+  top:0;
+  background:rgba(12,22,46,.95);
+  text-align:left;
+  z-index:1;
+}
 .param-table tbody tr { background:rgba(9,18,40,.6); }
-.param-table td { border-bottom:none; padding:10px 12px; }
+.param-table td { border-bottom:1px solid rgba(255,255,255,.05); padding:10px 12px; }
 .param-table tbody tr.dragging { opacity:.4; }
 .row-tools { display:flex; gap:8px; }
 .batch-actions { display:flex; flex-wrap:wrap; gap:10px; }
@@ -583,6 +635,32 @@ summary { cursor:pointer; }
 .list-card li { font-size:0.9rem; }
 .bad { color:var(--danger); }
 .notice { padding:14px 16px; background:rgba(255,255,255,.08); border-radius:var(--radius); }
+.quick-event-menu {
+  position:absolute;
+  background:rgba(15,26,52,.95);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--radius);
+  padding:8px;
+  display:grid;
+  gap:6px;
+  min-width:220px;
+  z-index:3000;
+  box-shadow:var(--shadow);
+}
+.quick-event-menu button {
+  background:transparent;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--radius);
+  padding:8px 10px;
+  color:var(--fg);
+  text-align:left;
+  cursor:pointer;
+}
+.quick-event-menu button:hover,
+.quick-event-menu button:focus-visible {
+  border-color:var(--accent);
+  color:var(--accent);
+}
 @media print {
   body { background:#fff; color:#000; }
   .app { display:block; }
@@ -616,7 +694,6 @@ summary { cursor:pointer; }
         <div class="panel">
           <div class="timer-shell">
             <div class="id-row">
-              <div class="field"><label>Site<input id="site" type="text" placeholder="Nom du site" autocomplete="off"></label></div>
               <div class="field"><label>Ligne<input type="text" value="L29" readonly></label></div>
               <div class="field"><label>PO<input id="po" type="text" placeholder="Ordre de production"></label></div>
               <div class="field"><label>Mode<select id="mode"><option value="up">Chrono croissant</option><option value="down">Chrono décroissant</option></select></label></div>
@@ -643,7 +720,6 @@ summary { cursor:pointer; }
               </div>
               <div class="progress-bar" id="progress" aria-hidden="true"><div class="progress-value"></div></div>
               <div class="chip-row" id="phaseChips" role="tablist"></div>
-              <div class="chip-row" id="opsChips"></div>
               <div class="label-muted" id="now"></div>
             </div>
             <div class="ops-columns" id="opsPhaseChips"></div>
@@ -680,7 +756,7 @@ summary { cursor:pointer; }
           </div>
           <div class="actions-row" style="margin-top:16px;">
             <button id="exportCsv" class="ghost" type="button">Exporter CSV</button>
-            <button id="exportHtml" class="ghost" type="button">Exporter HTML</button>
+            <button id="exportHtml" class="ghost" type="button">Exporter rapport</button>
           </div>
         </aside>
       </div>
@@ -710,6 +786,16 @@ summary { cursor:pointer; }
             <button id="resetParams" class="danger" type="button">Réinitialiser</button>
           </div>
         </div>
+      </div>
+      <div class="panel compact events-panel">
+        <div class="panel-title"><h2>Évènements prédéfinis</h2><span class="label-muted">Utilisés par l'événement rapide</span></div>
+        <form id="eventForm" class="event-form">
+          <div class="field">
+            <label>Nouvel événement<input type="text" id="eventInput" placeholder="Libellé d'événement"></label>
+          </div>
+          <button type="submit" class="ghost">Ajouter</button>
+        </form>
+        <ul id="eventsList" class="events-list"></ul>
       </div>
       <div class="panel compact phases-panel">
         <div class="panel-title"><h2>Phases et opérations</h2><span class="label-muted">Glisser-déposer pour réordonner</span></div>
@@ -764,6 +850,7 @@ summary { cursor:pointer; }
     operators: ['Opérateur A','', ''],
     defaultOperatorIndex: 0,
     multiView: true,
+    events: [],
     phases: {
       'Prépa chgt de PO': [
         { name: 'Checklist sécurité', targetMin: 3, operatorIndex: 0 }
@@ -806,7 +893,6 @@ summary { cursor:pointer; }
     targetMin: document.getElementById('targetMin'),
     warnMin: document.getElementById('warnMin'),
     mode: document.getElementById('mode'),
-    site: document.getElementById('site'),
     po: document.getElementById('po'),
     now: document.getElementById('now'),
     logTable: document.getElementById('logTable'),
@@ -815,7 +901,6 @@ summary { cursor:pointer; }
     exportHtml: document.getElementById('exportHtml'),
     fullscreen: document.getElementById('fullscreen'),
     toggleJournal: document.getElementById('toggleJournal'),
-    opsChips: document.getElementById('opsChips'),
     phaseChips: document.getElementById('phaseChips'),
     opsPhaseChips: document.getElementById('opsPhaseChips'),
     saveParams: document.getElementById('saveParams'),
@@ -838,7 +923,10 @@ summary { cursor:pointer; }
     phaseDistributionTarget: document.getElementById('phaseDistributionTarget'),
     operatorDistributionTarget: document.getElementById('operatorDistributionTarget'),
     prepaSummary: document.getElementById('prepaSummary'),
-    progressContainer: document.getElementById('progress')
+    progressContainer: document.getElementById('progress'),
+    eventForm: document.getElementById('eventForm'),
+    eventInput: document.getElementById('eventInput'),
+    eventsList: document.getElementById('eventsList')
   };
 
   let state = migrate(loadState());
@@ -848,7 +936,9 @@ summary { cursor:pointer; }
     lastTick: performance.now(),
     focusedOperator: state.defaultOperatorIndex || 0,
     journalHidden: false,
-    analysisTimeout: null
+    analysisTimeout: null,
+    shouldScrollToCurrent: false,
+    quickEventMenu: null
   };
 
   function loadState() {
@@ -873,6 +963,9 @@ summary { cursor:pointer; }
     merged.alertMin = Number.isFinite(merged.alertMin) ? merged.alertMin : 0;
     merged.marks = Array.isArray(merged.marks) ? merged.marks : [];
     merged.completedOpsByOp = merged.completedOpsByOp || {};
+    merged.events = Array.isArray(merged.events)
+      ? merged.events.map(label => typeof label === 'string' ? label.trim() : '').filter(label => label)
+      : [];
     Object.keys(merged.completedOpsByOp).forEach(op => {
       const phases = merged.completedOpsByOp[op];
       Object.keys(phases).forEach(ph => {
@@ -1005,31 +1098,27 @@ summary { cursor:pointer; }
     });
   }
 
-  function renderOperatorChips() {
-    els.opsChips.innerHTML = '';
-    state.operators.forEach((op, index) => {
-      if (!op && index > 0) return;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'chip' + (runtime.focusedOperator === index ? ' active' : '');
-      btn.textContent = op || `Opérateur ${index+1}`;
-      btn.addEventListener('click', () => {
-        runtime.focusedOperator = index;
-        renderOperatorChips();
-      });
-      els.opsChips.appendChild(btn);
-    });
-  }
-
   function renderOperatorColumns() {
     ensureCompletedStructures();
     els.opsPhaseChips.innerHTML = '';
+    if (!Number.isInteger(runtime.focusedOperator)) runtime.focusedOperator = state.defaultOperatorIndex;
+    if (runtime.focusedOperator < 0 || runtime.focusedOperator >= state.operators.length) runtime.focusedOperator = state.defaultOperatorIndex;
+    if (!state.multiView) runtime.focusedOperator = state.defaultOperatorIndex;
+    if (!state.operators[runtime.focusedOperator] && runtime.focusedOperator !== state.defaultOperatorIndex) {
+      runtime.focusedOperator = state.defaultOperatorIndex;
+    }
     state.operators.forEach((op, idx) => {
       if (!state.multiView && idx !== state.defaultOperatorIndex) return;
       if (!op && idx !== state.defaultOperatorIndex) return;
       const card = document.createElement('div');
       card.className = 'operator-card';
       card.dataset.index = idx;
+      if (idx === runtime.focusedOperator) card.classList.add('focused');
+      card.addEventListener('click', event => {
+        if (event.target.closest('.op-pill')) return;
+        runtime.focusedOperator = idx;
+        renderOperatorColumns();
+      });
       const operatorName = getCurrentOperatorName(idx);
       const phaseOps = (state.phases[state.activePhase] || []).filter(operation => {
         const assignedIndex = typeof operation.operatorIndex === 'number' ? operation.operatorIndex : state.defaultOperatorIndex;
@@ -1066,9 +1155,23 @@ summary { cursor:pointer; }
       card.appendChild(list);
       els.opsPhaseChips.appendChild(card);
     });
+    if (runtime.shouldScrollToCurrent) {
+      runtime.shouldScrollToCurrent = false;
+      requestAnimationFrame(scrollCurrentOperationIntoView);
+    }
+  }
+
+  function scrollCurrentOperationIntoView() {
+    if (!els.opsPhaseChips) return;
+    const selector = `.operator-card[data-index="${runtime.focusedOperator}"] .op-pill.current`;
+    const target = els.opsPhaseChips.querySelector(selector) || els.opsPhaseChips.querySelector('.op-pill.current');
+    if (target) {
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   }
 
   function validateOperation(operatorIndex, operation) {
+    runtime.focusedOperator = operatorIndex;
     const operatorName = getCurrentOperatorName(operatorIndex);
     ensureCompletedStructures();
     const completedSet = state.completedOpsByOp[operatorName][state.activePhase];
@@ -1088,6 +1191,7 @@ summary { cursor:pointer; }
       durationMs: duration
     });
     saveState();
+    runtime.shouldScrollToCurrent = true;
     renderOperatorColumns();
     renderLog();
     updateAnalysisDelayed();
@@ -1234,6 +1338,70 @@ summary { cursor:pointer; }
     updateAnalysisDelayed();
   }
 
+  function openQuickEventMenu() {
+    if (runtime.quickEventMenu) {
+      closeQuickEventMenu();
+      return;
+    }
+    const available = state.events.filter(label => label && label.trim());
+    if (!available.length) {
+      const manual = prompt("Libellé de l'événement :");
+      if (manual && manual.trim()) addEvent(manual.trim());
+      return;
+    }
+    const menu = document.createElement('div');
+    menu.className = 'quick-event-menu';
+    menu.setAttribute('role', 'menu');
+    available.forEach(label => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        addEvent(label);
+        closeQuickEventMenu();
+      });
+      menu.appendChild(btn);
+    });
+    const custom = document.createElement('button');
+    custom.type = 'button';
+    custom.textContent = 'Autre…';
+    custom.addEventListener('click', () => {
+      const manual = prompt("Libellé de l'événement :");
+      if (manual && manual.trim()) addEvent(manual.trim());
+      closeQuickEventMenu();
+    });
+    menu.appendChild(custom);
+    document.body.appendChild(menu);
+    const rect = els.lap.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + window.scrollY + 8}px`;
+    menu.style.left = `${rect.left + window.scrollX}px`;
+    runtime.quickEventMenu = menu;
+    document.addEventListener('click', handleQuickEventOutside, true);
+    document.addEventListener('keydown', handleQuickEventKeydown);
+    if (els.lap) els.lap.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeQuickEventMenu() {
+    if (!runtime.quickEventMenu) return;
+    runtime.quickEventMenu.remove();
+    runtime.quickEventMenu = null;
+    document.removeEventListener('click', handleQuickEventOutside, true);
+    document.removeEventListener('keydown', handleQuickEventKeydown);
+    if (els.lap) els.lap.setAttribute('aria-expanded', 'false');
+  }
+
+  function handleQuickEventOutside(event) {
+    if (!runtime.quickEventMenu) return;
+    if (runtime.quickEventMenu.contains(event.target) || (els.lap && els.lap.contains(event.target))) return;
+    closeQuickEventMenu();
+  }
+
+  function handleQuickEventKeydown(event) {
+    if (event.key === 'Escape') {
+      closeQuickEventMenu();
+    }
+  }
+
   function finishChange() {
     if (!state.marks.some(m => m.kind === 'end')) {
       addEvent('Fin du changement', { kind: 'end' });
@@ -1294,10 +1462,9 @@ summary { cursor:pointer; }
 
   function exportCsv() {
     const target = totalTargetMinutes();
-    const headers = ['date_session','site','line','po','mode','hors_chrono','target_min_global','idx','horodatage','duree_ms','duree_hms','operateur','phase','evenement','note'];
+    const headers = ['date_session','line','po','mode','hors_chrono','target_min_global','idx','horodatage','duree_ms','duree_hms','operateur','phase','evenement','note'];
     const rows = state.marks.map((mark, idx) => [
       new Date(state.sessionStart).toISOString(),
-      state.site,
       state.line,
       state.po,
       state.mode,
@@ -1317,7 +1484,48 @@ summary { cursor:pointer; }
   }
 
   function exportHtml() {
-    const template = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Rapport SMED</title><style>body{font-family:Arial,sans-serif;padding:40px;background:#f5f7fb;color:#111}h1{margin-top:0}section{margin-bottom:32px}table{border-collapse:collapse;width:100%;margin-top:12px}th,td{border:1px solid #ccd2e3;padding:8px 10px;font-size:13px}th{background:#e5ebf9;text-align:left}small{color:#5c6788}ul,ol{margin:8px 0 0 20px}</style></head><body>${buildReportHtml()}</body></html>`;
+    const template = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport SMED L29</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:light;}
+body{font-family:"Inter","Segoe UI",sans-serif;margin:40px;background:#f4f6fb;color:#0f1a34;}
+.report-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:2px solid #d6def0;padding-bottom:16px;margin-bottom:32px;}
+.report-header h1{margin:0;font-size:26px;color:#0b1533;}
+.report-header .meta{margin:4px 0 0;color:#5b6380;font-size:14px;}
+.report-header .chip{background:#0b1533;color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;}
+.section{margin-bottom:32px;}
+.section h2{margin:0 0 12px;font-size:20px;color:#0b1533;}
+.kpi-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}
+.kpi-card{background:#fff;border-radius:16px;padding:18px;border:1px solid #dbe3f6;box-shadow:0 10px 25px rgba(15,26,52,.08);}
+.kpi-card span{font-size:12px;letter-spacing:0.08em;color:#6c7693;text-transform:uppercase;}
+.kpi-card strong{display:block;margin-top:8px;font-size:20px;color:#0f1a34;}
+.data-table{width:100%;border-collapse:collapse;margin-top:12px;}
+.data-table th,.data-table td{border:1px solid #dbe3f6;padding:10px 12px;font-size:13px;text-align:left;}
+.data-table th{background:#eef2fc;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#4c5675;}
+.list-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}
+.list-grid article{background:#fff;border:1px solid #dbe3f6;border-radius:14px;padding:16px;display:grid;gap:10px;}
+.list-grid h3{margin:0;font-size:15px;color:#0b1533;}
+.list-grid ul{margin:0;padding-left:20px;display:grid;gap:6px;}
+.list-grid li{color:#0f1a34;font-size:14px;}
+.prepa-card{background:#fff;border:1px solid #dbe3f6;border-radius:16px;padding:18px;display:grid;gap:10px;}
+.badge{display:inline-block;padding:4px 10px;border-radius:999px;background:#eef2fc;color:#3a4a7a;font-size:12px;}
+.badge.hc{background:#ffe8cc;color:#ad5a00;}
+.muted{color:#6c7693;font-style:italic;}
+.journal-table{width:100%;border-collapse:collapse;margin-top:16px;}
+.journal-table th,.journal-table td{border:1px solid #dbe3f6;padding:8px 10px;font-size:12px;text-align:left;}
+.journal-table th{background:#eef2fc;letter-spacing:0.06em;text-transform:uppercase;color:#4c5675;}
+.journal-table td .badge{font-size:11px;}
+@media print{body{margin:20mm;background:#fff;color:#000;} .report-header{border-color:#c5cee4;} .kpi-card,.prepa-card,.list-grid article{box-shadow:none;} a{color:inherit;}}
+</style>
+</head>
+<body>
+${buildReportHtml()}
+</body>
+</html>`;
     downloadFile(`smed_l29_${Date.now()}.html`, template, 'text/html');
   }
 
@@ -1333,23 +1541,78 @@ summary { cursor:pointer; }
   function buildReportHtml() {
     const analysis = computeAnalysis();
     const kpi = analysis.kpi;
-    const rows = state.marks.map((mark, idx) => `<tr><td>${idx+1}</td><td>${formatDuration(mark.t)}</td><td>${formatDuration(mark.durationMs || 0)}</td><td>${mark.hc ? 'Oui' : 'Non'}</td><td>${escapeHtml(mark.phase)}</td><td>${escapeHtml(mark.operator || '')}</td><td>${escapeHtml(mark.label)}</td><td>${escapeHtml(mark.note || '')}</td></tr>`).join('');
-    const phases = analysis.phases.map(p => `<li>${escapeHtml(p.phase)}: ${formatDuration(p.duration)} (${p.percent} %)</li>`).join('');
-    const ops = analysis.operators.map(o => `<li>${escapeHtml(o.operator)}: ${formatDuration(o.duration)} (${o.percent} %)</li>`).join('');
-    const top = analysis.topContrib.length ? analysis.topContrib.map(item => `<li>${escapeHtml(item.phase)}: +${formatDuration(item.gap)}</li>`).join('') : '<li>Aucun dépassement</li>';
-    const topOps = analysis.topOps.map(item => `<li>${escapeHtml(item.label)} – ${formatDuration(item.duration)}</li>`).join('');
-    const perturb = analysis.events.length ? analysis.events.map(e => `<li>${escapeHtml(e.label)} (${e.count})</li>`).join('') : '<li>Aucun</li>';
-    const prepa = analysis.prepa;
-    const prepaNotes = prepa.notes.length ? `<ul>${prepa.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ul>` : '<p>—</p>';
-    const safeSite = escapeHtml(state.site || 'Site');
-    const safePo = escapeHtml(state.po || '');
+    const sessionDate = new Date(state.sessionStart).toLocaleString('fr-FR', { hour12: false });
+    const safePo = escapeHtml(state.po || '—');
+    const safeLine = escapeHtml(state.line || 'Ligne');
+    const modeLabel = state.mode === 'down' ? 'Chrono décroissant' : 'Chrono croissant';
+    const targetMinutes = kpi.target ? (kpi.target / 60000).toFixed(1) : '0.0';
+    const phasesRows = analysis.phases.length
+      ? analysis.phases.map(item => `<tr><td>${escapeHtml(item.phase)}</td><td>${formatDuration(item.duration)}</td><td>${item.percent}%</td><td>${item.gap ? '+' + formatDuration(item.gap) : '—'}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="muted">Aucune phase chronométrée enregistrée</td></tr>';
+    const operatorRows = analysis.operators.length
+      ? analysis.operators.map(item => `<tr><td>${escapeHtml(item.operator)}</td><td>${formatDuration(item.duration)}</td><td>${item.percent}%</td></tr>`).join('')
+      : '<tr><td colspan="3" class="muted">Aucun opérateur chronométré</td></tr>';
+    const topContribList = analysis.topContrib.length
+      ? analysis.topContrib.map(item => `<li>${escapeHtml(item.phase)} · +${formatDuration(item.gap)}</li>`).join('')
+      : '<li class="muted">Aucun dépassement</li>';
+    const topOpsList = analysis.topOps.length
+      ? analysis.topOps.map(item => `<li>${escapeHtml(item.label)} (${escapeHtml(item.phase)}) – ${formatDuration(item.duration)}</li>`).join('')
+      : '<li class="muted">—</li>';
+    const perturbList = analysis.events.length
+      ? analysis.events.map(item => `<li>${escapeHtml(item.label)} (${item.count})</li>`).join('')
+      : '<li class="muted">Aucun événement récurrent</li>';
+    const prepaNotes = analysis.prepa.notes.length
+      ? `<ul>${analysis.prepa.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ul>`
+      : '<p class="muted">Aucun commentaire</p>';
+    const journalRows = state.marks.length
+      ? state.marks.map((mark, idx) => `<tr><td>${idx + 1}</td><td>${formatDuration(mark.t)}</td><td>${formatDuration(mark.durationMs || 0)}</td><td>${mark.hc ? '<span class="badge hc">HC</span>' : 'Non'}</td><td>${escapeHtml(mark.phase)}</td><td>${escapeHtml(mark.operator || '')}</td><td>${escapeHtml(mark.label)}</td><td>${escapeHtml(mark.note || '')}</td></tr>`).join('')
+      : '<tr><td colspan="8" class="muted">Journal vide</td></tr>';
     return `
-      <h1>Rapport SMED – ${safeSite} – PO ${safePo}</h1>
-      <section><h2>KPIs</h2><p>Durée totale: <strong>${formatDuration(kpi.total)}</strong><br>Cible: <strong>${(kpi.target/60000).toFixed(1)} min</strong><br>Écart: <strong>${formatDuration(kpi.gap)}</strong><br>Gain potentiel: <strong>${formatDuration(kpi.potential)}</strong></p></section>
-      <section><h2>Répartition</h2><h3>Par phases</h3><ol>${phases}</ol><h3>Par opérateurs</h3><ol>${ops}</ol></section>
-      <section><h2>Top contributeurs</h2><ol>${top}</ol><h2>Top opérations longues</h2><ol>${topOps}</ol><h2>Perturbateurs fréquents</h2><ul>${perturb}</ul></section>
-      <section><h2>Prépa (HC)</h2><p>Checklist: ${prepa.percent}% complétée<br>Temps Prépa: ${formatDuration(prepa.duration)}<br>Commentaires:<br>${prepaNotes}</p></section>
-      <section><h2>Journal</h2><table><thead><tr><th>#</th><th>Horodatage</th><th>Durée</th><th>HC</th><th>Phase</th><th>Opérateur</th><th>Libellé</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></section>
+      <header class="report-header">
+        <div>
+          <h1>Rapport SMED – PO ${safePo}</h1>
+          <p class="meta">Ligne ${safeLine} · ${modeLabel} · Session du ${sessionDate}</p>
+        </div>
+        <div class="chip">Cible globale : ${targetMinutes} min</div>
+      </header>
+      <section class="section">
+        <h2>Indicateurs clés</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card"><span>Durée totale</span><strong>${formatDuration(kpi.total)}</strong></div>
+          <div class="kpi-card"><span>Cible (min)</span><strong>${targetMinutes}</strong></div>
+          <div class="kpi-card"><span>Écart</span><strong>${formatDuration(kpi.gap)}</strong></div>
+          <div class="kpi-card"><span>Gain potentiel</span><strong>${formatDuration(kpi.potential)}</strong></div>
+        </div>
+      </section>
+      <section class="section">
+        <h2>Répartition par phases</h2>
+        <table class="data-table"><thead><tr><th>Phase</th><th>Durée</th><th>%</th><th>Écart vs cible</th></tr></thead><tbody>${phasesRows}</tbody></table>
+      </section>
+      <section class="section">
+        <h2>Répartition par opérateurs</h2>
+        <table class="data-table"><thead><tr><th>Opérateur</th><th>Durée</th><th>%</th></tr></thead><tbody>${operatorRows}</tbody></table>
+      </section>
+      <section class="section">
+        <h2>Analyse qualitative</h2>
+        <div class="list-grid">
+          <article><h3>Top contributeurs à l'écart</h3><ul>${topContribList}</ul></article>
+          <article><h3>Top opérations longues</h3><ul>${topOpsList}</ul></article>
+          <article><h3>Perturbateurs fréquents</h3><ul>${perturbList}</ul></article>
+        </div>
+      </section>
+      <section class="section">
+        <h2>Prépa (HC)</h2>
+        <div class="prepa-card">
+          <div><span class="badge hc">HC</span> Checklist complétée à <strong>${analysis.prepa.percent}%</strong></div>
+          <div>Temps total hors chrono : <strong>${formatDuration(analysis.prepa.duration)}</strong></div>
+          <div>Commentaires :</div>
+          ${prepaNotes}
+        </div>
+      </section>
+      <section class="section">
+        <h2>Journal des événements</h2>
+        <table class="journal-table"><thead><tr><th>#</th><th>Horodatage</th><th>Durée</th><th>HC</th><th>Phase</th><th>Opérateur</th><th>Libellé</th><th>Note</th></tr></thead><tbody>${journalRows}</tbody></table>
+      </section>
     `;
   }
 
@@ -1481,13 +1744,15 @@ summary { cursor:pointer; }
             <button type="button" class="ghost" data-phase="${phase}" data-action="export-csv">Exporter CSV</button>
             <button type="button" class="ghost" data-phase="${phase}" data-action="export-json">Exporter JSON</button>
           </div>
-          <table class="param-table" data-phase="${phase}">
-            <thead>
-              <tr><th></th><th>Opération</th><th>Temps cible (min)</th><th>Opérateur</th><th></th></tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot><tr><td colspan="5">Σ ${phase}: <strong class="phase-total">0 min</strong></td></tr></tfoot>
-          </table>
+          <div class="phase-table-wrapper">
+            <table class="param-table" data-phase="${phase}">
+              <thead>
+                <tr><th></th><th>Opération</th><th>Temps cible (min)</th><th>Opérateur</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot><tr><td colspan="5">Σ ${phase}: <strong class="phase-total">0 min</strong></td></tr></tfoot>
+            </table>
+          </div>
         </details>
       `;
       els.phaseTables.appendChild(section);
@@ -1722,18 +1987,61 @@ summary { cursor:pointer; }
     els.multiView.checked = !!state.multiView;
   }
 
+  function renderEventsList() {
+    if (!els.eventsList) return;
+    els.eventsList.innerHTML = '';
+    const events = state.events.filter(label => label && label.trim());
+    if (!events.length) {
+      const empty = document.createElement('li');
+      empty.className = 'empty';
+      empty.textContent = 'Aucun événement enregistré';
+      els.eventsList.appendChild(empty);
+      return;
+    }
+    events.forEach((label, index) => {
+      const item = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = label;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.index = index;
+      btn.textContent = 'Suppr.';
+      btn.addEventListener('click', () => removePresetEvent(index));
+      item.append(span, btn);
+      els.eventsList.appendChild(item);
+    });
+  }
+
+  function removePresetEvent(index) {
+    if (!Number.isInteger(index)) return;
+    state.events.splice(index, 1);
+    saveState();
+    renderEventsList();
+    closeQuickEventMenu();
+  }
+
+  function handleEventFormSubmit(event) {
+    event.preventDefault();
+    if (!els.eventInput) return;
+    const value = els.eventInput.value.trim();
+    if (!value) return;
+    state.events.push(value);
+    els.eventInput.value = '';
+    saveState(true);
+    renderEventsList();
+  }
+
   function refreshAll() {
-    els.site.value = state.site;
     els.po.value = state.po;
     els.mode.value = state.mode;
     renderPhaseChips();
-    renderOperatorChips();
     renderOperatorColumns();
     updateTargets();
     updateDisplay();
     renderLog();
     buildPhaseTables();
     buildDefaultsForm();
+    renderEventsList();
     renderAnalysis();
     if (state.activePhase === 'Prépa chgt de PO') {
       els.startPause.disabled = true;
@@ -1758,7 +2066,9 @@ summary { cursor:pointer; }
   function bindEvents() {
     els.navButtons.forEach(btn => btn.addEventListener('click', () => switchPage(btn.dataset.target, btn)));
     els.startPause.addEventListener('click', toggleTimer);
-    els.lap.addEventListener('click', () => addEvent('Événement rapide'));
+    els.lap.setAttribute('aria-haspopup', 'menu');
+    els.lap.setAttribute('aria-expanded', 'false');
+    els.lap.addEventListener('click', openQuickEventMenu);
     els.markOp.addEventListener('click', () => {
       if (state.activePhase === 'Prépa chgt de PO') {
         showToast('Checklist Prépa (HC) : validation sans impact chrono', 'info');
@@ -1787,7 +2097,6 @@ summary { cursor:pointer; }
     els.exportHtml.addEventListener('click', exportHtml);
     els.logTable.addEventListener('input', handleNoteEdit);
     els.mode.addEventListener('change', () => { state.mode = els.mode.value; saveState(); updateDisplay(); });
-    els.site.addEventListener('input', () => { state.site = els.site.value; saveState(); });
     els.po.addEventListener('input', () => { state.po = els.po.value; saveState(); });
     els.fullscreen.addEventListener('click', toggleFullscreen);
     if (els.toggleJournal) {
@@ -1834,7 +2143,6 @@ summary { cursor:pointer; }
         saveState();
         buildDefaultsForm();
         renderOperatorColumns();
-        renderOperatorChips();
       });
     });
     els.multiView.addEventListener('change', () => {
@@ -1842,6 +2150,9 @@ summary { cursor:pointer; }
       saveState();
       renderOperatorColumns();
     });
+    if (els.eventForm) {
+      els.eventForm.addEventListener('submit', handleEventFormSubmit);
+    }
     document.addEventListener('keydown', handleShortcuts);
   }
 
@@ -1884,11 +2195,12 @@ summary { cursor:pointer; }
     }
     if (['1','2','3'].includes(event.key)) {
       runtime.focusedOperator = Number(event.key) - 1;
-      renderOperatorChips();
+      renderOperatorColumns();
     }
   }
 
   function switchPage(pageId, btn) {
+    closeQuickEventMenu();
     runtime.activePage = pageId;
     els.pages.forEach(page => page.classList.toggle('active', page.id === pageId));
     els.navButtons.forEach(nav => nav.classList.toggle('active', nav === btn));
